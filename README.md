@@ -9,13 +9,15 @@ Install this package in your project using `swift package manager`.
 ### Usage
 -------------
 
-This package provides a basic loadable view that you would typically use to create a more specific view for your use case.
+This package provides a basic loadable to use or to create a more specific view for your use case.
 
 We will start by creating an environment that implements the `LoadableEnvironment` protocol.
 
 ```swift
 import ComposableArchitecture
 import TCALoadable
+import Combine
+import SwiftUI
 
 struct AppEnvironment: LoadableEnvironment {
     
@@ -53,7 +55,7 @@ let appReducer = Reducer<AppState, AppAction, AppEnvironment> { state, action, e
         return .none
     }
 }
-.loadable(
+.loadable( // Enhance the app reducer with the default loadable action reducer.
     state: \.score,
     action: /AppAction.loadActions,
     environment: { $0 }
@@ -61,4 +63,71 @@ let appReducer = Reducer<AppState, AppAction, AppEnvironment> { state, action, e
 
 ```
 
-Now we can create our view.
+Now we can create our app's content view.
+
+```swift
+struct ContentView: View {
+
+    let store: Store<AppState, AppAction>
+    
+    var body: some View {
+        WithViewStore(store) { viewStore in 
+            LoadableView(
+                store: store.scope(
+                    state: { $0.score },
+                    action: { .loadActions($0) }
+                ),
+                autoLoad: true
+            ) { loadedScore in 
+                Text("Congratulations your score is: \(loadedScore)")
+            }
+            notRequestedView: { ProgressView() }
+            isLoadingView: { ProgressView() }
+            errorView: { error in
+                VStack {
+                    Text("Oops, something went wrong!")
+                    Text(error.localizedDescription)
+                        .font(.callout)
+                        
+                    Button(action: { viewStore.send(.loadActions(.load)) }) {
+                        Text("Retry")
+                    }
+                }
+            }
+        }
+    }
+}
+```
+If you are targeting `iOS: 14, macOS: 11,  tvOS: 14.0, watchOS: 7.0` or later then there is a convience for using a progress view, so we could rewrite our content view as follows.
+
+```swift
+struct ContentView: View {
+
+    let store: Store<AppState, AppAction>
+    
+    var body: some View {
+        WithViewStore(store) { viewStore in 
+            LoadableProgressView(
+                store: store.scope(
+                    state: { $0.score },
+                    action: { .loadActions($0) }
+                ),
+                autoLoad: true
+            ) { loadedScore in 
+                Text("Congratulations your score is: \(loadedScore)")
+            }
+            errorView: { error in
+                VStack {
+                    Text("Oops, something went wrong!")
+                    Text(error.localizedDescription)
+                        .font(.callout)
+                        
+                    Button(action: { viewStore.send(.loadActions(.load)) }) {
+                        Text("Retry")
+                    }
+                }
+            }
+        }
+    }
+}
+```
