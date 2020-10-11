@@ -131,6 +131,6 @@ struct ContentView: View {
     }
 }
 ```
-Then build and run our application.
+Then build and run our application.  Below is an example simulating all the different view states.
 
 ![Example Screenshot](https://github.com/m-housh/TCALoadable/blob/main/TCALoadable_Example.gif)
