@@ -29,4 +29,4 @@ extension LoadableAction: Equatable {
     }
 }
 
-typealias LoadableActionsFor = LoadableAction
+public typealias LoadableActionsFor = LoadableAction

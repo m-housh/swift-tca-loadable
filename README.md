@@ -9,7 +9,7 @@ Install this package in your project using `swift package manager`.
 ### Usage
 -------------
 
-This package provides a basic loadable to use or to create a more specific view for your use case.
+This package provides a basic loadable view to use or to create a more specific view for your use case.
 
 We will start by creating an environment that implements the `LoadableEnvironment` protocol.
 
@@ -21,7 +21,7 @@ import SwiftUI
 
 struct AppEnvironment: LoadableEnvironment {
     
-    typealias LoadedValue: Int
+    typealias LoadedValue = Int
     
     let mainQueue: AnySchedulerOf<DispatchQueue>
     
@@ -82,7 +82,7 @@ struct ContentView: View {
                 Text("Congratulations your score is: \(loadedScore)")
             }
             notRequestedView: { ProgressView() }
-            isLoadingView: { ProgressView() }
+            isLoadingView: { _ in ProgressView() }
             errorView: { error in
                 VStack {
                     Text("Oops, something went wrong!")
@@ -131,3 +131,4 @@ struct ContentView: View {
     }
 }
 ```
+Then build and run our application.
