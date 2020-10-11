@@ -132,3 +132,5 @@ struct ContentView: View {
 }
 ```
 Then build and run our application.
+
+![Example Screenshot](https://github.com/m-housh/TCALoadable/blob/main/TCALoadable_Example.gif)
