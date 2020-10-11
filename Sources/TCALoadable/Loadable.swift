@@ -1,10 +1,35 @@
+//
+// Loadable.swift
+//
+
 import Foundation
 
+/// Represents the different states of a loadable item.
 public enum Loadable<T> {
+    
+    /// Item has not yet been loaded.
     case notRequested
+    
+    /// Item is in the process of loading and any previously loaded state.
     case isLoading(previous: T?)
+    
+    /// Item has successfully loaded.
     case loaded(T)
+    
+    /// Item failed to load.
     case failed(Error)
+    
+    /// The current value of the item, if it has been previously loaded.
+    public var value: T? {
+        switch self {
+        case let .loaded(value):
+            return value
+        case let .isLoading(previous: previous):
+            return previous
+        default:
+            return nil
+        }
+    }
 }
 
 extension Loadable: Equatable where T: Equatable {

@@ -1,21 +1,24 @@
 //
 //  LoadableEnvironment.swift
 //  
-//
-//  Created by Michael on 10/10/20.
-//
 
 import Foundation
 import ComposableArchitecture
 
+/// An environment that can load an item.
 public protocol LoadableEnvironment {
-    associatedtype Item
-    func load() -> Effect<Item, Error>
+    
+    /// The type that the environment can load.
+    associatedtype LoadedValue
+    
+    /// The method that loads the item.
+    func load() -> Effect<LoadedValue, Error>
 }
 
+/// A concrete `LoadableEnvironment` wrapper.
 public struct AnyLoadableEnvironment<Environment>: LoadableEnvironment where Environment: LoadableEnvironment {
     
-    public typealias Item = Environment.Item
+    public typealias LoadedValue = Environment.LoadedValue
     
     private let other: Environment
     
@@ -23,7 +26,7 @@ public struct AnyLoadableEnvironment<Environment>: LoadableEnvironment where Env
         self.other = other
     }
     
-    public func load() -> Effect<Environment.Item, Error> {
+    public func load() -> Effect<Environment.LoadedValue, Error> {
         other.load()
     }
 }

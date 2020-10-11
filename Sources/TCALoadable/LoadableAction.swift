@@ -1,14 +1,16 @@
 //
 //  LoadableAction.swift
 //  
-//
-//  Created by Michael on 10/10/20.
-//
 
 import Foundation
 
+/// The actions that a loadable view can use.
 public enum LoadableAction<T: Equatable> {
+    
+    /// Load or refresh the item.
     case load
+    
+    /// The load has completed.
     case loadingCompleted(Result<T, Error>)
 }
 
@@ -26,3 +28,5 @@ extension LoadableAction: Equatable {
         }
     }
 }
+
+typealias LoadableActionsFor = LoadableAction
