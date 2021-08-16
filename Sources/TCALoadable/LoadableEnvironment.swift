@@ -6,33 +6,47 @@ import Foundation
 import ComposableArchitecture
 
 /// An environment that can load an item.
-public protocol LoadableEnvironment {
-    
-    /// The type that the environment can load.
-    associatedtype LoadedValue
-    
-    /// The method that loads the item.
-    func load() -> Effect<LoadedValue, Error>
+public protocol LoadableEnvironmentRepresentable {
+  
+  /// The type that the environment can load.
+  associatedtype LoadedValue
+  
+  /// The request type
+  associatedtype LoadRequest
+  
+  /// The method that loads the item.
+  var load: (LoadRequest) -> Effect<LoadedValue, Error> { get }
+  
+  /// The main dispatch queue.
+  var mainQueue: AnySchedulerOf<DispatchQueue> { get }
 }
 
-/// A concrete `LoadableEnvironment` wrapper.
-public struct AnyLoadableEnvironment<Environment>: LoadableEnvironment where Environment: LoadableEnvironment {
-    
-    public typealias LoadedValue = Environment.LoadedValue
-    
-    private let other: Environment
-    
-    public init(_ other: Environment) {
-        self.other = other
-    }
-    
-    public func load() -> Effect<Environment.LoadedValue, Error> {
-        other.load()
-    }
+/// An empty load request type.
+public struct EmptyLoadRequest: Equatable {
+  public init() { }
 }
 
-extension LoadableEnvironment {
-    public func eraseToAnyLoadableEnvironment() -> AnyLoadableEnvironment<Self> {
-        AnyLoadableEnvironment(self)
-    }
+/// A concrete `LoadableEnvironment` type.
+public struct LoadableEnvironment<LoadedValue, LoadRequest>: LoadableEnvironmentRepresentable {
+  
+  public var load: (LoadRequest) -> Effect<LoadedValue, Error>
+  public var mainQueue: AnySchedulerOf<DispatchQueue>
+  
+  public init(
+    load: @escaping (LoadRequest) -> Effect<LoadedValue, Error>,
+    mainQueue: AnySchedulerOf<DispatchQueue>
+  ) {
+    self.load = load
+    self.mainQueue = mainQueue
+  }
+}
+
+extension LoadableEnvironment where LoadRequest == EmptyLoadRequest {
+  
+  public init(
+    load: @escaping () -> Effect<LoadedValue, Error>,
+    mainQueue: AnySchedulerOf<DispatchQueue>
+  ) {
+    self.init(load: { _ in load() }, mainQueue: mainQueue)
+  }
 }
