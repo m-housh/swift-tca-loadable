@@ -1,73 +1,104 @@
 import ComposableArchitecture
+@_exported import EditModeShim
+@_exported import LoadableView
 import SwiftUI
-import TCALoadable
 
-public enum LoadableListAction<LoadedValue: Collection, Failure: Error> where LoadedValue: Equatable {
+public struct LoadableListViewEnvironment<Element, LoadRequest, Failure: Error> {
   
-  case list(ListAction)
-  case load(LoadableAction<LoadedValue, Failure>)
+  public var load: (LoadRequest) -> Effect<[Element], Failure>
+  public var mainQueue: AnySchedulerOf<DispatchQueue>
   
-  public enum ListAction: Equatable {
-    case delete(IndexSet)
-    case move(IndexSet, Int)
+  public init(
+    load: @escaping (LoadRequest) -> Effect<[Element], Failure>,
+    mainQueue: AnySchedulerOf<DispatchQueue>
+  ) {
+    self.load = load
+    self.mainQueue = mainQueue
   }
 }
+extension LoadableListViewEnvironment: LoadableEnvironmentRepresentable { }
+public typealias LoadableListViewEnvironmentFor = LoadableListViewEnvironment
+
+// MARK: - State
+public struct LoadableListViewState<Element, Failure: Error> {
+  public var editMode: EditMode
+  public var loadable: Loadable<[Element], Failure>
+  
+  public init(
+    editMode: EditMode = .inactive,
+    loadable: Loadable<[Element], Failure> = .notRequested
+  ) {
+    self.editMode = editMode
+    self.loadable = loadable
+  }
+}
+extension LoadableListViewState: Equatable where Element: Equatable, Failure: Equatable { }
+public typealias LoadableListViewStateFor = LoadableListViewState
+
+// MARK: - Action
+public enum ListAction: Equatable {
+  case delete(IndexSet)
+  case move(IndexSet, Int)
+}
+
+public enum EditModeAction: Equatable {
+  case set(to: EditMode)
+}
+
+public enum LoadableListAction<Element, Failure: Error> where Element: Equatable {
+  case editMode(EditModeAction)
+  case list(ListAction)
+  case load(LoadableAction<[Element], Failure>)
+}
 extension LoadableListAction: Equatable where Failure: Equatable { }
+public typealias LoadableListActionFor = LoadableListAction
 
 extension Reducer {
   
-  public func loadableList<T, F>(
-    state: WritableKeyPath<State, Loadable<T, F>>,
-    action: CasePath<Action, LoadableListAction<T, F>>
-  ) -> Reducer where T: RangeReplaceableCollection, T: MutableCollection {
+  public func loadableList<Element, Failure>(
+    state: WritableKeyPath<State, LoadableListViewState<Element, Failure>>,
+    action: CasePath<Action, LoadableListAction<Element, Failure>>
+  ) -> Reducer {
     .combine(
-      Reducer<Loadable<T, F>, LoadableListAction<T, F>, Void> { state, action, _ in
+      Reducer<LoadableListViewState<Element, Failure>, LoadableListAction<Element, Failure>, Void> { state, action, _ in
         switch action {
+        case let .editMode(.set(to: editMode)):
+          state.editMode = editMode
+          return .none
+          
         case let .list(.delete(indexSet)):
-          state.rawValue?.remove(atOffsets: indexSet)
+          state.loadable.rawValue?.remove(atOffsets: indexSet)
           return .none
+          
         case let .list(.move(source, destination)):
-          state.rawValue?.move(fromOffsets: source, toOffset: destination)
+          state.loadable.rawValue?.move(fromOffsets: source, toOffset: destination)
           return .none
+          
         case .load:
           return .none
         }
       }
-        .loadable(state: \.self, action: /LoadableListAction<T, F>.load)
+        .loadable(state: \.loadable, action: /LoadableListAction.load)
         .pullback(state: state, action: action, environment: { _ in }),
       self
     )
   }
   
-  public func loadableList<E>(
-    state: WritableKeyPath<State, Loadable<E.LoadedValue, E.Failure>>,
-    action: CasePath<Action, LoadableListAction<E.LoadedValue, E.Failure>>,
-    environment: @escaping (Environment) -> E
-  ) -> Reducer where E: LoadableEnvironmentRepresentable, E.LoadedValue: RangeReplaceableCollection, E.LoadedValue: MutableCollection, E.LoadRequest == EmptyLoadRequest, E.Failure: Equatable {
+  public func loadableList<Element, Failure: Error, Request>(
+    state: WritableKeyPath<State, LoadableListViewStateFor<Element, Failure>>,
+    action: CasePath<Action, LoadableListActionFor<Element, Failure>>,
+    environment: @escaping (Environment) -> LoadableListViewEnvironmentFor<Element, Request, Failure>
+  ) -> Reducer where Failure: Equatable {
     .combine(
-      Reducer<Loadable<E.LoadedValue, E.Failure>, LoadableListAction<E.LoadedValue, E.Failure>, E>.empty
+      Reducer<
+        LoadableListViewState<Element, Failure>,
+        LoadableListAction<Element, Failure>,
+        LoadableListViewEnvironment<Element, Request, Failure>
+      >.empty
         .loadableList(state: \.self, action: /LoadableListAction.self)
         .loadable(
-          state: \.self,
-          action: /LoadableListAction<E.LoadedValue, E.Failure>.load,
-          environment: { $0 }
-        )
-        .pullback(state: state, action: action, environment: environment),
-      self
-    )
-  }
-  
-  public func loadableList<E>(
-    state: WritableKeyPath<State, Loadable<E.LoadedValue, E.Failure>>,
-    action: CasePath<Action, LoadableListAction<E.LoadedValue, E.Failure>>,
-    environment: @escaping (Environment) -> E
-  ) -> Reducer where E: LoadableEnvironmentRepresentable, E.LoadedValue: RangeReplaceableCollection, E.LoadedValue: MutableCollection, E.Failure: Equatable {
-    .combine(
-      Reducer<Loadable<E.LoadedValue, E.Failure>, LoadableListAction<E.LoadedValue, E.Failure>, E>.empty
-        .loadableList(state: \.self, action: /LoadableListAction.self)
-        .loadable(
-          state: \.self,
-          action: /LoadableListAction<E.LoadedValue, E.Failure>.load,
+          state: \.loadable,
+          action: /LoadableListAction.load,
           environment: { $0 }
         )
         .pullback(state: state, action: action, environment: environment),
@@ -76,6 +107,7 @@ extension Reducer {
   }
 }
 
+// MARK: - View
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 public struct LoadableListView<
   Element: Equatable,
@@ -84,14 +116,14 @@ public struct LoadableListView<
   Row: View
 >: View where Failure: Equatable {
   
-  public let store: Store<Loadable<[Element], Failure>, LoadableListAction<[Element], Failure>>
+  public let store: Store<LoadableListViewStateFor<Element, Failure>, LoadableListActionFor<Element, Failure>>
   
   let autoLoad: Bool
   let id: KeyPath<Element, Id>
   let row: (Element) -> Row
   
   public init(
-    store: Store<Loadable<[Element], Failure>, LoadableListAction<[Element], Failure>>,
+    store: Store<LoadableListViewStateFor<Element, Failure>, LoadableListActionFor<Element, Failure>>,
     autoLoad: Bool = false,
     id: KeyPath<Element, Id>,
     @ViewBuilder row: @escaping (Element) -> Row
@@ -103,20 +135,26 @@ public struct LoadableListView<
   }
   
   public var body: some View {
-    LoadableView(
-      store: store,
-      autoLoad: autoLoad,
-      onLoad: .load(.load)
-    ) { store in
-      WithViewStore(store) { viewStore in
-        List {
-          ForEach(viewStore.state, id: id) {
-            row($0)
+    WithViewStore(store) { viewStore in
+      LoadableView(
+        store: store.scope(state: \.loadable),
+        autoLoad: autoLoad,
+        onLoad: .load(.load)
+      ) { store in
+        WithViewStore(store) { loadedViewStore in
+          List {
+            ForEach(loadedViewStore.state, id: id) {
+              row($0)
+            }
+            .onDelete { loadedViewStore.send(.list(.delete($0))) }
+            .onMove { loadedViewStore.send(.list(.move($0, $1))) }
           }
-          .onDelete { viewStore.send(.list(.delete($0))) }
-          .onMove { viewStore.send(.list(.move($0, $1))) }
         }
       }
+      .environment(
+        \.editMode,
+         viewStore.binding(get: \.editMode, send: { .editMode(.set(to: $0)) })
+      )
     }
   }
 }
@@ -124,7 +162,7 @@ public struct LoadableListView<
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 extension LoadableListView where Element: Identifiable, Id == Element.ID {
   public init(
-    store: Store<Loadable<[Element], Failure>, LoadableListAction<[Element], Failure>>,
+    store: Store<LoadableListViewStateFor<Element, Failure>, LoadableListActionFor<Element, Failure>>,
     autoLoad: Bool = false,
     @ViewBuilder row: @escaping (Element) -> Row
   ) {
@@ -153,7 +191,7 @@ extension LoadableListView where Element: Identifiable, Id == Element.ID {
     case loadingFailed
   }
 
-  extension LoadableEnvironment where LoadedValue == [User], LoadRequest == EmptyLoadRequest, Failure == LoadError {
+  extension LoadableListViewEnvironment where Element == User, LoadRequest == EmptyLoadRequest, Failure == LoadError {
     static let users = Self.init(
       load: { _ in
         Just([User.blob, .blobJr, .blobSr])
@@ -166,28 +204,41 @@ extension LoadableListView where Element: Identifiable, Id == Element.ID {
   }
 
   let usersReducer = Reducer<
-    Loadable<[User], LoadError>,
-    LoadableListAction<[User], LoadError>,
-    LoadableEnvironment<[User], EmptyLoadRequest, LoadError>
+    LoadableListViewStateFor<User, LoadError>,
+    LoadableListActionFor<User, LoadError>,
+    LoadableListViewEnvironmentFor<User, EmptyLoadRequest, LoadError>
   >.empty
     .loadableList(
       state: \.self,
-      action: /LoadableListAction<[User], LoadError>.self,
+      action: /LoadableListAction<User, LoadError>.self,
       environment: { $0 }
     )
 
   @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-  struct TCAView_Previews: PreviewProvider {
+  struct LoadableListView_Previews: PreviewProvider {
     static var previews: some View {
       LoadableListView(
         store: .init(
-          initialState: .notRequested,
+          initialState: .init(),
           reducer: usersReducer,
           environment: .users
         ),
         autoLoad: true
       ) { user in
         Text(user.name)
+      }
+      
+      NavigationView {
+        LoadableListView(
+          store: .init(
+            initialState: .init(editMode: .active),
+            reducer: usersReducer,
+            environment: .users
+          ),
+          autoLoad: true
+        ) { user in
+          Text(user.name)
+        }
       }
     }
   }

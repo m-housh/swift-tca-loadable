@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-  name: "TCALoadable",
+  name: "swift-tca-loadable",
   platforms: [
     .iOS(.v13),
     .macOS(.v10_15),
@@ -11,8 +11,9 @@ let package = Package(
     .watchOS(.v6),
   ],
   products: [
+    .library(name: "EditModeShim", targets: ["EditModeShim"]),
     .library(name: "LoadableList", targets: ["LoadableList"]),
-    .library(name: "TCALoadable", targets: ["TCALoadable"]),
+    .library(name: "LoadableView", targets: ["LoadableView"]),
   ],
   dependencies: [
     .package(url: "https://github.com/pointfreeco/swift-composable-architecture.git", from: "0.8.0"),
@@ -20,14 +21,19 @@ let package = Package(
   ],
   targets: [
     .target(
+      name: "EditModeShim",
+      dependencies: []
+    ),
+    .target(
       name: "LoadableList",
       dependencies: [
-        "TCALoadable",
+        "LoadableView",
+        "EditModeShim",
         .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
       ]
     ),
     .target(
-      name: "TCALoadable",
+      name: "LoadableView",
       dependencies: [
         .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
       ]
@@ -35,7 +41,7 @@ let package = Package(
     .testTarget(
       name: "TCALoadableTests",
       dependencies: [
-        "TCALoadable",
+        "LoadableView",
         "SnapshotTesting"
       ]
     ),
