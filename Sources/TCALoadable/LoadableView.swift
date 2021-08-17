@@ -6,6 +6,215 @@ import SwiftUI
 import Combine
 import ComposableArchitecture
 
+public struct LoadableView2<
+  LoadedValue: Equatable,
+  Action: Equatable,
+  NotRequestedView: View,
+  LoadedView: View,
+  ErrorView: View,
+  IsLoadingView: View
+>: View {
+  
+  /// The store to derive our state and actions from.
+  public let store: Store<Loadable<LoadedValue>, Action>
+  
+  /// A flag for if we automatically send a load action when the view appears and our state is `.notRequested`
+  let autoLoad: Bool
+  
+  /// The view shown when our state is `.notRequested`
+  let notRequestedView: () -> NotRequestedView
+  
+  /// The view shown when our state is `.loaded`
+  let loadedView: (LoadedValue) -> LoadedView
+  
+  /// The view shown when our state is `.isLoading`
+  let isLoadingView: (LoadedValue?) -> IsLoadingView
+  
+  /// The view shown when our state is `.failed`
+  let errorView: (Error) -> ErrorView
+  
+  let loadAction: Action
+  
+  /// Create a loadable view.
+  ///
+  /// - parameters:
+  ///     - store: The store to derive our state and actions from.
+  ///     - autoLoad: A flag for if we automatically send a load action if our state is `.notRequested`
+  ///     - loadedView: The view shown if our state is `.loaded`
+  ///     - notRequestedView: The view shown if our state is `.notRequested`
+  ///     - isLoadingView: The view shown if our state is `.isLoading`
+  ///     - errorView: The view shown if our state is `.failed`
+  public init(
+    store: Store<Loadable<LoadedValue>, Action>,
+    onLoad loadAction: Action,
+    autoLoad: Bool = false,
+    @ViewBuilder loadedView: @escaping (LoadedValue) -> LoadedView,
+    @ViewBuilder notRequestedView: @escaping () -> NotRequestedView,
+    @ViewBuilder isLoadingView: @escaping (LoadedValue?) -> IsLoadingView,
+    @ViewBuilder errorView: @escaping (Error) -> ErrorView
+  ) {
+    self.store = store
+    self.autoLoad = autoLoad
+    self.notRequestedView = notRequestedView
+    self.errorView = errorView
+    self.isLoadingView = isLoadingView
+    self.loadedView = loadedView
+    self.loadAction = loadAction
+  }
+  
+  public var body: some View {
+    WithViewStore(store) { viewStore in
+      switch viewStore.state {
+      case .notRequested:
+        notRequestedView().onAppear {
+          if autoLoad {
+            viewStore.send(loadAction)
+          }
+        }
+      case let .isLoading(previous):
+        isLoadingView(previous)
+      case let .failed(error):
+        errorView(error)
+      case let .loaded(value):
+        loadedView(value)
+      }
+    }
+  }
+}
+
+public struct LoadableView3<
+  LoadedValue: Equatable,
+  Action: Equatable,
+  NotRequestedView: View,
+  LoadedView: View,
+  ErrorView: View,
+  IsLoadingView: View
+>: View {
+  
+  /// The store to derive our state and actions from.
+  public let store: Store<Loadable<LoadedValue>, Action>
+  
+  /// A flag for if we automatically send a load action when the view appears and our state is `.notRequested`
+  let autoLoad: Bool
+  
+  /// The view shown when our state is `.notRequested`
+  let notRequestedView: (Store<Void, Action>) -> NotRequestedView
+  
+  /// The view shown when our state is `.loaded`
+  let loadedView: (Store<LoadedValue, Action>) -> LoadedView
+  
+  /// The view shown when our state is `.isLoading`
+  let isLoadingView: (Store<LoadedValue?, Action>) -> IsLoadingView
+  
+  /// The view shown when our state is `.failed`
+  let errorView: (Store<Error, Action>) -> ErrorView
+  
+  let loadAction: Action
+  
+  /// Create a loadable view.
+  ///
+  /// - parameters:
+  ///     - store: The store to derive our state and actions from.
+  ///     - autoLoad: A flag for if we automatically send a load action if our state is `.notRequested`
+  ///     - loadedView: The view shown if our state is `.loaded`
+  ///     - notRequestedView: The view shown if our state is `.notRequested`
+  ///     - isLoadingView: The view shown if our state is `.isLoading`
+  ///     - errorView: The view shown if our state is `.failed`
+  public init(
+    store: Store<Loadable<LoadedValue>, Action>,
+    onLoad loadAction: Action,
+    autoLoad: Bool = false,
+    @ViewBuilder loadedView: @escaping (Store<LoadedValue, Action>) -> LoadedView,
+    @ViewBuilder notRequestedView: @escaping (Store<Void, Action>) -> NotRequestedView,
+    @ViewBuilder isLoadingView: @escaping (Store<LoadedValue?, Action>) -> IsLoadingView,
+    @ViewBuilder errorView: @escaping (Store<Error, Action>) -> ErrorView
+  ) {
+    self.store = store
+    self.autoLoad = autoLoad
+    self.notRequestedView = notRequestedView
+    self.errorView = errorView
+    self.isLoadingView = isLoadingView
+    self.loadedView = loadedView
+    self.loadAction = loadAction
+  }
+  
+  public var body: some View {
+    SwitchStore(self.store) {
+      CaseLet<
+        Loadable<LoadedValue>,
+        Action,
+        Void,
+        Action,
+        AnyView
+      >(
+        state: /Loadable<LoadedValue>.notRequested,
+        action: { $0 },
+        then: { store in
+          AnyView(
+            WithViewStore(store) { viewStore in
+              notRequestedView(store)
+                .onAppear {
+                  if autoLoad {
+                    viewStore.send(loadAction)
+                  }
+                }
+            }
+          )
+        }
+      )
+      CaseLet<
+        Loadable<LoadedValue>,
+        Action,
+        LoadedValue,
+        Action,
+        LoadedView
+      >(
+        state: /Loadable<LoadedValue>.loaded,
+        action: { $0 },
+        then: loadedView
+      )
+      CaseLet<
+        Loadable<LoadedValue>,
+        Action,
+        LoadedValue?,
+        Action,
+        IsLoadingView
+      >(
+        state: /Loadable<LoadedValue>.isLoading,
+        action: { $0 },
+        then: isLoadingView
+      )
+      CaseLet<
+        Loadable<LoadedValue>,
+        Action,
+        Error,
+        Action,
+        ErrorView
+      >(
+        state: /Loadable<LoadedValue>.failed,
+        action: { $0 },
+        then: errorView
+      )
+    }
+//    WithViewStore(store) { viewStore in
+//      switch viewStore.state {
+//      case .notRequested:
+//        notRequestedView().onAppear {
+//          if autoLoad {
+//            viewStore.send(loadAction)
+//          }
+//        }
+//      case let .isLoading(previous):
+//        isLoadingView(previous)
+//      case let .failed(error):
+//        errorView(error)
+//      case let .loaded(value):
+//        loadedView(value)
+//      }
+//    }
+  }
+}
+
 /// A view that can handle loadable items using the `ComposableArchitecture` pattern.  You will most likely want to make a more concrete
 /// view that fits your needs, using this internally.
 ///

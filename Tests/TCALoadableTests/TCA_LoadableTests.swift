@@ -266,9 +266,36 @@ final class TCA_LoadableTests: XCTestCase {
     let isLoading = Loadable<User>.isLoading(previous: user)
     XCTAssertEqual(isLoading.name, "blob")
   }
+  
+  func test_loadable_view2_notRequested() {
+    let scheduler = DispatchQueue.test
+    let store = Store<Loadable<[Int]>, LoadableView2Action>.init(
+      initialState: .notRequested,
+      reducer: loadableView2Reducer,
+      environment: LoadableView2Environment.init(failOnLoad: false, mainQueue: scheduler.eraseToAnyScheduler())
+    )
+    
+    let view = LoadableView2(
+      store: store,
+      onLoad: .load,
+      loadedView: { numbers in
+        List {
+          ForEach(numbers, id: \.self) { number in
+            Text("\(number)")
+          }
+        }
+      },
+      notRequestedView: { ProgressView() },
+      isLoadingView: { _ in ProgressView() },
+      errorView: { Text($0.localizedDescription) }
+    )
+    let vc = NSHostingController(rootView: view)
+    
+    assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 100, height: 100)), record: false)
+  }
 }
 
-enum TestError: Error {
+enum TestError: Error, Equatable {
   case failed
 }
 
@@ -336,4 +363,77 @@ struct TestEnvironmentWithStringRequest: LoadableEnvironmentRepresentable {
         .eraseToEffect()
     }
   }
+}
+struct LoadableView2Environment {
+  let load: () -> Effect<[Int], Error>
+  let failOnLoad: Bool
+  let mainQueue: AnySchedulerOf<DispatchQueue>
+  
+  init(
+    failOnLoad: Bool = false,
+    mainQueue: AnySchedulerOf<DispatchQueue>
+  ) {
+    self.failOnLoad = failOnLoad
+    self.mainQueue = mainQueue
+    
+    if failOnLoad {
+      self.load = { Fail(error: TestError.failed)
+        .delay(for: .seconds(1), scheduler: mainQueue)
+        .eraseToEffect()
+      }
+    } else {
+      self.load = {
+        Just([1, 2, 3])
+          .delay(for: .seconds(1), scheduler: mainQueue)
+          .setFailureType(to: Error.self)
+          .eraseToEffect()
+      }
+    }
+  }
+}
+
+enum LoadableView2Action: Equatable {
+  case load
+  case loadingCompleted(Result<[Int], TestError>)
+}
+
+let loadableView2Reducer = Reducer<Loadable<[Int]>, LoadableView2Action, LoadableView2Environment> { state, action, environment in
+  switch action {
+  case .load:
+    return environment.load()
+      .mapError({ _ in TestError.failed })
+      .catchToEffect()
+      .map(LoadableView2Action.loadingCompleted)
+    
+  case let .loadingCompleted(.success(values)):
+    state = .loaded(values)
+    return .none
+    
+  case let .loadingCompleted(.failure(error)):
+    state = .failed(error)
+    return .none
+  }
+}
+
+struct User: Equatable, Identifiable {
+  let id: UUID = UUID()
+  var name: String
+  
+  static let blob = User.init(name: "blob")
+  static let blobJr = User.init(name: "blob-jr")
+  static let blobSr = User.init(name: "blob-sr")
+}
+
+struct UserEnvironment {
+  
+  let load: (String?) -> Effect<[User], Error> = { query in
+    let users = [User.blob, .blobJr, .blobSr]
+    if let query = query {
+      return Effect(value: users.filter({ $0.name == query }))
+    }
+    return Effect(value: users)
+  }
+  
+  let mainQueue: AnySchedulerOf<DispatchQueue>
+  
 }

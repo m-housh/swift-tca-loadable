@@ -26,7 +26,7 @@ extension Reducer {
       Reducer<Loadable<E.LoadedValue>, LoadableAction<E.LoadedValue>, E> { state, action, environment in
         switch action {
           
-          // Load the item and set the state appropriately.
+        // Load the item and set the state appropriately.
         case .load:
           state = .isLoading(previous: state.rawValue)
           return .none
@@ -37,18 +37,48 @@ extension Reducer {
 //            .map(LoadableAction<E.LoadedValue, E.LoadRequest>.loadingCompleted)
 //            .cancellable(id: LoadableCancellationId())
           
-          // Loading completed successfully.
+        // Loading completed successfully.
         case let .loadingCompleted(.success(item)):
           state = .loaded(item)
           return .none
           
-          // Loading failed.
+        // Loading failed.
         case let .loadingCompleted(.failure(error)):
           state = .failed(error)
           return .none
         }
       }
         .pullback(state: state, action: action, environment: environment),
+      self
+    )
+  }
+  
+  // caller is responsible for hooking into the load in this scenario and should call loadingComplete.
+  public func loadable2<T>(
+    state: WritableKeyPath<State, Loadable<T>>,
+    action: CasePath<Action, LoadableAction<T>>
+  ) -> Reducer {
+    .combine(
+      Reducer<Loadable<T>, LoadableAction<T>, Void> { state, action, _ in
+        switch action {
+          
+        // Set the state appropriately.
+        case .load:
+          state = .isLoading(previous: state.rawValue)
+          return .none
+          
+        // Loading completed successfully.
+        case let .loadingCompleted(.success(item)):
+          state = .loaded(item)
+          return .none
+          
+        // Loading failed.
+        case let .loadingCompleted(.failure(error)):
+          state = .failed(error)
+          return .none
+        }
+      }
+        .pullback(state: state, action: action, environment: { _ in }),
       self
     )
   }
