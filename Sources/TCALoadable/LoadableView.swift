@@ -12,65 +12,65 @@ import ComposableArchitecture
 /// Example:
 /// ``` swift
 /// struct MyErrorView: View {
-///     let error: Error
+///   let error: Error
 ///
-///     var body: some View {
-///         Text(error.localizedDescription)
-///             .font(.callout)
-///     }
+///   var body: some View {
+///     Text(error.localizedDescription)
+///       .font(.callout)
+///   }
 /// }
 ///
 /// struct MyLoadedView: View {
-///     let number: Int
+///   let number: Int
 ///
-///     var body: some View {
-///         Text("The loaded number is: \(number)")
-///     }
+///   var body: some View {
+///     Text("The loaded number is: \(number)")
+///   }
 /// }
 ///
 /// struct MyLoadableNumberView: View {
-///     let store: Store<Loadable<Int>, LoadableAction<Int>>
+///   let store: Store<LoadableState<Int, EmptyLoadRequest>, LoadableAction<Int>>
 ///
-///     var body: some View {
-///         LoadableView(store: store, autoLoad: true) { loadedNumber in
-///             MyLoadedView(number: loadedNumber)
-///         }
-///         notRequestedView: { ProgressView() }
-///         isLoadingView: { ProgressView() }
-///         errorView: { MyErrorView(error: $0) }
+///   var body: some View {
+///     LoadableView(store: store, autoLoad: true) { loadedNumber in
+///       MyLoadedView(number: loadedNumber)
 ///     }
+///     notRequestedView: { ProgressView() }
+///     isLoadingView: { ProgressView() }
+///     errorView: { MyErrorView(error: $0) }
+///   }
 /// }
 ///
 /// struct MyLoadableEnvironment: LoadableEnvironment {
-///     typealias LoadedValue: Int
+///   typealias LoadedValue: Int
+///   typealias LoadRequest: EmptyLoadRequest
 ///
-///     let mainQueue: AnySchedulerOf<DispatchQueue>
+///   let mainQueue: AnySchedulerOf<DispatchQueue>
 ///
-///     func load() -> Effect<Int, Error> {
-///         Just(1)
-///             .delay(for: .seconds(1), scheduler: mainQueue)
-///             .setFailureType(to: Error.self)
-///             .eraseToEffect()
-///     }
+///   let load: (EmptyLoadRequest) -> Effect<Int, Error> = { _ in
+///     Just(1)
+///       .delay(for: .seconds(1), scheduler: mainQueue)
+///       .setFailureType(to: Error.self)
+///       .eraseToEffect()
+///   }
 /// }
 ///
 /// let view = MyLoadableNumberView(
-///     store: Store(
-///         initialState: .init(loadable: Loadable<Int>.notRequested),
-///         reducer: Reducer.empty.loadable(
-///             state: \.self,
-///             action: /LoadableAction.self,
-///             environment: { $0 }
-///         ),
-///         environment: MyLoadableEnvironment(
-///             mainQueue: DispatchQueue.main.eraseToAnyScheduler()
-///         )
+///   store: Store(
+///     initialState: .init(loadable: Loadable<Int>.notRequested),
+///     reducer: Reducer.empty.loadable(
+///       state: \.self,
+///       action: /LoadableAction.self,
+///       environment: { $0 }
+///     ),
+///     environment: MyLoadableEnvironment(
+///       mainQueue: .main
 ///     )
+///   )
 /// )
 ///```
 public struct LoadableView<
   LoadedValue: Equatable,
-  LoadRequest,
   NotRequestedView: View,
   LoadedView: View,
   ErrorView: View,
@@ -78,7 +78,7 @@ public struct LoadableView<
 >: View {
   
   /// The store to derive our state and actions from.
-  public let store: Store<LoadableState<LoadedValue, LoadRequest>, LoadableAction<LoadedValue>>
+  public let store: Store<Loadable<LoadedValue>, LoadableAction<LoadedValue>>
   
   /// A flag for if we automatically send a load action when the view appears and our state is `.notRequested`
   let autoLoad: Bool
@@ -105,7 +105,7 @@ public struct LoadableView<
   ///     - isLoadingView: The view shown if our state is `.isLoading`
   ///     - errorView: The view shown if our state is `.failed`
   public init(
-    store: Store<LoadableState<LoadedValue, LoadRequest>, LoadableAction<LoadedValue>>,
+    store: Store<Loadable<LoadedValue>, LoadableAction<LoadedValue>>,
     autoLoad: Bool = false,
     @ViewBuilder loadedView: @escaping (LoadedValue) -> LoadedView,
     @ViewBuilder notRequestedView: @escaping () -> NotRequestedView,
@@ -122,7 +122,7 @@ public struct LoadableView<
   
   public var body: some View {
     WithViewStore(store) { viewStore in
-      switch viewStore.state.loadable {
+      switch viewStore.state {
       case .notRequested:
         notRequestedView().onAppear {
           if autoLoad {
@@ -137,6 +137,57 @@ public struct LoadableView<
         loadedView(value)
       }
     }
+  }
+}
+
+@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
+extension LoadableView where NotRequestedView == ProgressView<EmptyView, EmptyView> {
+  public init(
+    store: Store<Loadable<LoadedValue>, LoadableAction<LoadedValue>>,
+    autoLoad: Bool = false,
+    @ViewBuilder loadedView: @escaping (LoadedValue) -> LoadedView,
+    @ViewBuilder isLoadingView: @escaping (LoadedValue?) -> IsLoadingView,
+    @ViewBuilder errorView: @escaping (Error) -> ErrorView
+  ) {
+    self.init(
+      store: store,
+      loadedView: loadedView,
+      notRequestedView: { ProgressView() },
+      isLoadingView: isLoadingView,
+      errorView: errorView
+    )
+  }
+}
+
+@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
+extension LoadableView where
+NotRequestedView == ProgressView<EmptyView, EmptyView>,
+IsLoadingView == _ConditionalContent<
+  ProgressView<EmptyView, EmptyView>,
+  VStack<TupleView<(ProgressView<EmptyView, EmptyView>, LoadedView)>>
+> {
+  public init(
+    store: Store<Loadable<LoadedValue>, LoadableAction<LoadedValue>>,
+    autoLoad: Bool = false,
+    @ViewBuilder loadedView: @escaping (LoadedValue) -> LoadedView,
+    @ViewBuilder errorView: @escaping (Error) -> ErrorView
+  ) {
+    self.init(
+      store: store,
+      loadedView: loadedView,
+      isLoadingView: { previous in
+        switch previous {
+        case .none:
+          ProgressView()
+        case let .some(item):
+          VStack {
+            ProgressView()
+            loadedView(item)
+          }
+        }
+      },
+      errorView: errorView
+    )
   }
 }
 
@@ -191,11 +242,16 @@ public struct LoadableView<
 /// }
 /// errorView: { MyErrorView(error: $0) }
 ///
+@available(*, deprecated, message: "Use overload on LoadableView instead.")
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-public struct LoadableProgressView<LoadedValue: Equatable, LoadRequest, LoadedView: View, ErrorView: View>: View {
+public struct LoadableProgressView<
+  LoadedValue: Equatable,
+  LoadedView: View,
+  ErrorView: View
+>: View {
   
   /// The store to derive our state and actions.
-  public let store: Store<LoadableState<LoadedValue, LoadRequest>, LoadableAction<LoadedValue>>
+  public let store: Store<Loadable<LoadedValue>, LoadableAction<LoadedValue>>
   
   /// A flag for if we automatically send a load action if our state is `.notRequested`
   let autoLoad: Bool
@@ -215,7 +271,7 @@ public struct LoadableProgressView<LoadedValue: Equatable, LoadRequest, LoadedVi
   ///     - errorView: The view shown if our state is `.failed`
   ///
   public init(
-    store: Store<LoadableState<LoadedValue, LoadRequest>, LoadableAction<LoadedValue>>,
+    store: Store<Loadable<LoadedValue>, LoadableAction<LoadedValue>>,
     autoLoad: Bool = true,
     @ViewBuilder loadedView: @escaping (LoadedValue) -> LoadedView,
     @ViewBuilder errorView: @escaping (Error) -> ErrorView

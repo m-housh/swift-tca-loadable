@@ -5,17 +5,20 @@
 import Foundation
 
 /// The actions that a loadable view can use.
-public enum LoadableAction<T: Equatable> {
+public enum LoadableAction<LoadedValue: Equatable> {
   
   /// Load or refresh the item.
   case load
   
   /// The load has completed.
-  case loadingCompleted(Result<T, Error>)
+  case loadingCompleted(Result<LoadedValue, Error>)
 }
 
 extension LoadableAction: Equatable {
-  public static func == (lhs: LoadableAction<T>, rhs: LoadableAction<T>) -> Bool {
+  public static func == (
+    lhs: LoadableAction<LoadedValue>,
+    rhs: LoadableAction<LoadedValue>
+  ) -> Bool {
     switch (lhs, rhs) {
     case (.load, .load):
       return true

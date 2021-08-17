@@ -20,11 +20,11 @@ final class TCA_LoadableTests: XCTestCase {
   }
   
   func test_loadable_value() {
-    XCTAssertEqual(Loadable<Int>.loaded(1).value, 1)
-    XCTAssertEqual(Loadable<Int>.isLoading(previous: 1).value, 1)
-    XCTAssertNil(Loadable<Int>.isLoading(previous: nil).value)
-    XCTAssertNil(Loadable<Int>.notRequested.value)
-    XCTAssertNil(Loadable<Int>.failed(TestError.failed).value)
+    XCTAssertEqual(Loadable<Int>.loaded(1).rawValue, 1)
+    XCTAssertEqual(Loadable<Int>.isLoading(previous: 1).rawValue, 1)
+    XCTAssertNil(Loadable<Int>.isLoading(previous: nil).rawValue)
+    XCTAssertNil(Loadable<Int>.notRequested.rawValue)
+    XCTAssertNil(Loadable<Int>.failed(TestError.failed).rawValue)
   }
   
   func test_loadable_action_equality() {
@@ -39,7 +39,7 @@ final class TCA_LoadableTests: XCTestCase {
     let scheduler = DispatchQueue.test
     
     let store = TestStore(
-      initialState: .init(loadable: Loadable<[Int]>.notRequested),
+      initialState: Loadable<[Int]>.notRequested,
       reducer: Reducer.empty.loadable(
         state: \.self,
         action: /LoadableAction.self,
@@ -53,11 +53,11 @@ final class TCA_LoadableTests: XCTestCase {
     
     store.assert(
       .send(.load) {
-        $0.loadable = .isLoading(previous: nil)
+        $0 = .isLoading(previous: nil)
       },
       .do { scheduler.advance(by: .seconds(1)) },
       .receive(.loadingCompleted(.success([1, 2, 3]))) {
-        $0.loadable = .loaded([1, 2, 3])
+        $0 = .loaded([1, 2, 3])
       }
     )
   }
@@ -66,7 +66,7 @@ final class TCA_LoadableTests: XCTestCase {
     let scheduler = DispatchQueue.test
     
     let store = TestStore(
-      initialState: .init(loadable: Loadable<[Int]>.notRequested),
+      initialState: Loadable<[Int]>.notRequested,
       reducer: Reducer.empty.loadable(
         state: \.self,
         action: /LoadableAction.self,
@@ -80,11 +80,11 @@ final class TCA_LoadableTests: XCTestCase {
     
     store.assert(
       .send(.load) {
-        $0.loadable = .isLoading(previous: nil)
+        $0 = .isLoading(previous: nil)
       },
       .do { scheduler.advance(by: .seconds(1)) },
       .receive(.loadingCompleted(.failure(TestError.failed))) {
-        $0.loadable = .failed(TestError.failed)
+        $0 = .failed(TestError.failed)
       }
     )
   }
@@ -93,7 +93,7 @@ final class TCA_LoadableTests: XCTestCase {
   func test_loadable_progress_view_when_notRequested() {
     let scheduler = DispatchQueue.test
     let store = Store(
-      initialState: .init(loadable: Loadable<[Int]>.notRequested),
+      initialState: Loadable<[Int]>.notRequested,
       reducer: Reducer.empty.loadable(
         state: \.self,
         action: /LoadableAction.self,
@@ -105,7 +105,7 @@ final class TCA_LoadableTests: XCTestCase {
       )
     )
     
-    let view = LoadableProgressView(store: store) { numbers in
+    let view = LoadableView(store: store) { numbers in
       List {
         ForEach(numbers, id: \.self) { number in
           Text("\(number)")
@@ -126,7 +126,7 @@ final class TCA_LoadableTests: XCTestCase {
   func test_loadable_progress_view_when_loaded() {
     let scheduler = DispatchQueue.test
     let store = Store(
-      initialState: .init(loadable: Loadable<[Int]>.loaded([1, 2, 3])),
+      initialState: Loadable<[Int]>.loaded([1, 2, 3]),
       reducer: Reducer.empty.loadable(
         state: \.self,
         action: /LoadableAction.self,
@@ -159,7 +159,7 @@ final class TCA_LoadableTests: XCTestCase {
   func test_loadable_progress_view_when_isLoading_with_no_previous_state() {
     let scheduler = DispatchQueue.test
     let store = Store(
-      initialState: .init(loadable: Loadable<[Int]>.isLoading(previous: nil)),
+      initialState: Loadable<[Int]>.isLoading(previous: nil),
       reducer: Reducer.empty.loadable(
         state: \.self,
         action: /LoadableAction.self,
@@ -192,7 +192,7 @@ final class TCA_LoadableTests: XCTestCase {
   func test_loadable_progress_view_when_isLoading_with_previous_state() {
     let scheduler = DispatchQueue.test
     let store = Store(
-      initialState: .init(loadable: Loadable<[Int]>.isLoading(previous: [1, 2, 3])),
+      initialState: Loadable<[Int]>.isLoading(previous: [1, 2, 3]),
       reducer: Reducer.empty.loadable(
         state: \.self,
         action: /LoadableAction.self,
@@ -225,7 +225,7 @@ final class TCA_LoadableTests: XCTestCase {
   func test_loadable_progress_view_when_failed() {
     let scheduler = DispatchQueue.test
     let store = Store(
-      initialState: .init(loadable: Loadable<[Int]>.failed(TestError.failed)),
+      initialState: Loadable<[Int]>.failed(TestError.failed),
       reducer: Reducer.empty.loadable(
         state: \.self,
         action: /LoadableAction.self,
@@ -335,15 +335,5 @@ struct TestEnvironmentWithStringRequest: LoadableEnvironmentRepresentable {
         .setFailureType(to: Error.self)
         .eraseToEffect()
     }
-  }
-}
-
-extension LoadableState where LoadRequest == String?, LoadedValue == String {
-  
-  init(_ loadable: Loadable<String> = .notRequested) {
-    self.init(
-      loadable: loadable,
-      loadRequest: { "foo" }
-    )
   }
 }

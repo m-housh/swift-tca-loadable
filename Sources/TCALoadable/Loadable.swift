@@ -21,7 +21,7 @@ public enum Loadable<T> {
   case failed(Error)
   
   /// The current value of the item, if it has been previously loaded.
-  public var value: T? {
+  public var rawValue: T? {
     switch self {
     case let .loaded(value):
       return value
@@ -33,7 +33,7 @@ public enum Loadable<T> {
   }
   
   public subscript<A>(dynamicMember keyPath: KeyPath<T, A>) -> A? {
-    self.value?[keyPath: keyPath]
+    self.rawValue?[keyPath: keyPath]
   }
 }
 

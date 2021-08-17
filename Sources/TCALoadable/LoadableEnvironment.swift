@@ -26,7 +26,7 @@ public struct EmptyLoadRequest: Equatable {
   public init() { }
 }
 
-/// A concrete `LoadableEnvironment` type.
+/// A concrete `LoadableEnvironmentRepresentable` type.
 public struct LoadableEnvironment<LoadedValue, LoadRequest>: LoadableEnvironmentRepresentable {
   
   public var load: (LoadRequest) -> Effect<LoadedValue, Error>
@@ -48,5 +48,23 @@ extension LoadableEnvironment where LoadRequest == EmptyLoadRequest {
     mainQueue: AnySchedulerOf<DispatchQueue>
   ) {
     self.init(load: { _ in load() }, mainQueue: mainQueue)
+  }
+}
+
+#if DEBUG
+  extension LoadableEnvironment {
+    public static var failing: LoadableEnvironment {
+      .init(
+        load: { _ in .failing("\(Self.self).load is unimplemented") },
+        mainQueue: .failing("\(Self.self).mainQueue is unimplemented")
+      )
+    }
+  }
+#endif
+
+extension LoadableEnvironment {
+  
+  public static var noop: LoadableEnvironment {
+    .init(load: { _ in .none }, mainQueue: .main)
   }
 }
