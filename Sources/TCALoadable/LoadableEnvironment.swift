@@ -14,8 +14,11 @@ public protocol LoadableEnvironmentRepresentable {
   /// The request type
   associatedtype LoadRequest
   
+  /// The failure type.
+  associatedtype Failure: Error
+  
   /// The method that loads the item.
-  var load: (LoadRequest) -> Effect<LoadedValue, Error> { get }
+  var load: (LoadRequest) -> Effect<LoadedValue, Failure> { get }
   
   /// The main dispatch queue.
   var mainQueue: AnySchedulerOf<DispatchQueue> { get }
@@ -27,13 +30,13 @@ public struct EmptyLoadRequest: Equatable {
 }
 
 /// A concrete `LoadableEnvironmentRepresentable` type.
-public struct LoadableEnvironment<LoadedValue, LoadRequest>: LoadableEnvironmentRepresentable {
+public struct LoadableEnvironment<LoadedValue, LoadRequest, Failure: Error>: LoadableEnvironmentRepresentable {
   
-  public var load: (LoadRequest) -> Effect<LoadedValue, Error>
+  public var load: (LoadRequest) -> Effect<LoadedValue, Failure>
   public var mainQueue: AnySchedulerOf<DispatchQueue>
   
   public init(
-    load: @escaping (LoadRequest) -> Effect<LoadedValue, Error>,
+    load: @escaping (LoadRequest) -> Effect<LoadedValue, Failure>,
     mainQueue: AnySchedulerOf<DispatchQueue>
   ) {
     self.load = load
@@ -44,7 +47,7 @@ public struct LoadableEnvironment<LoadedValue, LoadRequest>: LoadableEnvironment
 extension LoadableEnvironment where LoadRequest == EmptyLoadRequest {
   
   public init(
-    load: @escaping () -> Effect<LoadedValue, Error>,
+    load: @escaping () -> Effect<LoadedValue, Failure>,
     mainQueue: AnySchedulerOf<DispatchQueue>
   ) {
     self.init(load: { _ in load() }, mainQueue: mainQueue)
