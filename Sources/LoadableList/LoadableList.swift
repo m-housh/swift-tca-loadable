@@ -84,6 +84,28 @@ extension Reducer {
     )
   }
   
+  public func loadableList<Element, Failure>(
+    state: WritableKeyPath<State, LoadableListViewStateFor<Element, Failure>>,
+    action: CasePath<Action, LoadableListActionFor<Element, Failure>>,
+    environment: @escaping (Environment) -> LoadableListViewEnvironmentFor<Element, EmptyLoadRequest, Failure>
+  ) -> Reducer where Failure: Equatable, Failure: Error {
+    .combine(
+      Reducer<
+        LoadableListViewState<Element, Failure>,
+        LoadableListAction<Element, Failure>,
+        LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>
+      >.empty
+        .loadableList(state: \.self, action: /LoadableListAction.self)
+        .loadable(
+          state: \.loadable,
+          action: /LoadableListAction.load,
+          environment: { $0 }
+        )
+        .pullback(state: state, action: action, environment: environment),
+      self
+    )
+  }
+  
   public func loadableList<Element, Failure: Error, Request>(
     state: WritableKeyPath<State, LoadableListViewStateFor<Element, Failure>>,
     action: CasePath<Action, LoadableListActionFor<Element, Failure>>,
