@@ -43,6 +43,13 @@ let package = Package(
         .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
       ]
     ),
+    .testTarget(
+      name: "LoadableListTests",
+      dependencies: [
+        "LoadableList",
+        "SnapshotTesting"
+      ]
+    ),
     .target(
       name: "LoadablePicker",
       dependencies: [

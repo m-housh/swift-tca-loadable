@@ -8,6 +8,11 @@ import SnapshotTesting
 
 final class TCA_LoadableTests: XCTestCase {
   
+  override func setUp() {
+    super.setUp()
+//    isRecording = true
+  }
+  
   func test_loadable_equality() {
     XCTAssertEqual(Loadable<Int, TestError>.notRequested, Loadable<Int, TestError>.notRequested)
     XCTAssertEqual(Loadable<Int, TestError>.loaded(1), Loadable<Int, TestError>.loaded(1))
@@ -112,14 +117,12 @@ final class TCA_LoadableTests: XCTestCase {
         }
       }
     }
-//    errorView: {
-//      Text($0.localizedDescription)
-//    }
-    
+    #if os(macOS)
     let vc = NSHostingController(rootView: view)
-    
-    assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 100, height: 100)), record: false)
-    
+    assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 100, height: 100)), named: "macOS")
+    #elseif os(iOS)
+    assertSnapshot(matching: view, as: .image(layout: .fixed(width: 300, height: 300), traits: .init(userInterfaceStyle: .light)), named: "ios")
+    #endif
   }
   
   @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
@@ -147,10 +150,12 @@ final class TCA_LoadableTests: XCTestCase {
       }
     }
     
+    #if os(macOS)
     let vc = NSHostingController(rootView: view)
-    
-    assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 100, height: 100)), record: false)
-    
+    assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 100, height: 100)), named: "macOS")
+    #elseif os(iOS)
+    assertSnapshot(matching: view, as: .image(layout: .fixed(width: 300, height: 300), traits: .init(userInterfaceStyle: .light)), named: "ios")
+    #endif
   }
   
   @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
@@ -180,10 +185,10 @@ final class TCA_LoadableTests: XCTestCase {
       }
     }
     
+    #if os(macOS)
     let vc = NSHostingController(rootView: view)
-    
     assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 100, height: 100)), record: false)
-    
+    #endif
   }
   
   @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
@@ -210,11 +215,12 @@ final class TCA_LoadableTests: XCTestCase {
         }
       }
     }
-
+    #if os(macOS)
     let vc = NSHostingController(rootView: view)
-    
-    assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 100, height: 100)), record: false)
-    
+    assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 100, height: 100)), named: "macOS")
+    #elseif os(iOS)
+    assertSnapshot(matching: view, as: .image(layout: .fixed(width: 300, height: 300), traits: .init(userInterfaceStyle: .light)), named: "ios")
+    #endif
   }
   
   @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
@@ -242,10 +248,12 @@ final class TCA_LoadableTests: XCTestCase {
       }
     }
     
+    #if os(macOS)
     let vc = NSHostingController(rootView: view)
-    
-    assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 100, height: 100)), record: false)
-    
+    assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 100, height: 100)), named: "macOS")
+    #elseif os(iOS)
+    assertSnapshot(matching: view, as: .image(layout: .fixed(width: 300, height: 300), traits: .init(userInterfaceStyle: .light)), named: "ios")
+    #endif
   }
   
   func test_loadable_dynamic_lookup() {
