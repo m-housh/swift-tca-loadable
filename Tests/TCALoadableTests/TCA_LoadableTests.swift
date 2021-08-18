@@ -8,8 +8,12 @@ import SnapshotTesting
 
 final class TCA_LoadableTests: XCTestCase {
   
+  // allow some deviation because test environments, ci, M1 mac's, etc.
+  var precision: Float!
+  
   override func setUp() {
     super.setUp()
+    self.precision = 0.99
 //    isRecording = true
   }
   
@@ -119,9 +123,9 @@ final class TCA_LoadableTests: XCTestCase {
     }
     #if os(macOS)
     let vc = NSHostingController(rootView: view)
-    assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 100, height: 100)), named: "macOS")
+    assertSnapshot(matching: vc, as: .image(precision: precision, size: CGSize(width: 100, height: 100)), named: "macOS")
     #elseif os(iOS)
-    assertSnapshot(matching: view, as: .image(layout: .fixed(width: 300, height: 300), traits: .init(userInterfaceStyle: .light)), named: "ios")
+    assertSnapshot(matching: view, as: .image(precision: precision, layout: .fixed(width: 300, height: 300), traits: .init(userInterfaceStyle: .light)), named: "ios")
     #endif
   }
   
@@ -152,9 +156,9 @@ final class TCA_LoadableTests: XCTestCase {
     
     #if os(macOS)
     let vc = NSHostingController(rootView: view)
-    assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 100, height: 100)), named: "macOS")
+    assertSnapshot(matching: vc, as: .image(precision: precision, size: CGSize(width: 100, height: 100)), named: "macOS")
     #elseif os(iOS)
-    assertSnapshot(matching: view, as: .image(layout: .fixed(width: 300, height: 300), traits: .init(userInterfaceStyle: .light)), named: "ios")
+    assertSnapshot(matching: view, as: .image(precision: precision, layout: .fixed(width: 300, height: 300), traits: .init(userInterfaceStyle: .light)), named: "ios")
     #endif
   }
   
@@ -187,7 +191,9 @@ final class TCA_LoadableTests: XCTestCase {
     
     #if os(macOS)
     let vc = NSHostingController(rootView: view)
-    assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 100, height: 100)), record: false)
+    assertSnapshot(matching: vc, as: .image(precision: precision, size: CGSize(width: 100, height: 100)), record: false)
+    #elseif os(iOS)
+    assertSnapshot(matching: view, as: .image(precision: precision, layout: .fixed(width: 300, height: 300), traits: .init(userInterfaceStyle: .light)), named: "ios")
     #endif
   }
   
@@ -217,9 +223,9 @@ final class TCA_LoadableTests: XCTestCase {
     }
     #if os(macOS)
     let vc = NSHostingController(rootView: view)
-    assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 100, height: 100)), named: "macOS")
+    assertSnapshot(matching: vc, as: .image(precision: precision, size: CGSize(width: 100, height: 100)), named: "macOS")
     #elseif os(iOS)
-    assertSnapshot(matching: view, as: .image(layout: .fixed(width: 300, height: 300), traits: .init(userInterfaceStyle: .light)), named: "ios")
+    assertSnapshot(matching: view, as: .image(precision: precision, layout: .fixed(width: 300, height: 300), traits: .init(userInterfaceStyle: .light)), named: "ios")
     #endif
   }
   
@@ -250,9 +256,9 @@ final class TCA_LoadableTests: XCTestCase {
     
     #if os(macOS)
     let vc = NSHostingController(rootView: view)
-    assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 100, height: 100)), named: "macOS")
+    assertSnapshot(matching: vc, as: .image(precision: precision, size: CGSize(width: 100, height: 100)), named: "macOS")
     #elseif os(iOS)
-    assertSnapshot(matching: view, as: .image(layout: .fixed(width: 300, height: 300), traits: .init(userInterfaceStyle: .light)), named: "ios")
+    assertSnapshot(matching: view, as: .image(precision: precision, layout: .fixed(width: 300, height: 300), traits: .init(userInterfaceStyle: .light)), named: "ios")
     #endif
   }
   

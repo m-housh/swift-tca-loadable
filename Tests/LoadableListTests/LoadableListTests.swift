@@ -10,8 +10,12 @@ import SwiftUI
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 final class LoadableListTests: XCTestCase {
   
+  // allow some deviation because test environments, ci, M1 mac's, etc.
+  var precision: Float!
+  
   override func setUp() {
     super.setUp()
+    self.precision = 0.99
 //    isRecording = true
   }
   
@@ -29,10 +33,10 @@ final class LoadableListTests: XCTestCase {
     
     #if os(macOS)
     let vc = NSHostingController(rootView: view)
-    assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 300, height: 300)))
+    assertSnapshot(matching: vc, as: .image(precision: precision, size: CGSize(width: 300, height: 300)))
     #endif
     #if os(iOS)
-    assertSnapshot(matching: view, as: .image(layout: .fixed(width: 300, height: 300), traits: .init(userInterfaceStyle: .light)), named: "ios-not-editing")
+    assertSnapshot(matching: view, as: .image(precision: precision, layout: .fixed(width: 300, height: 300), traits: .init(userInterfaceStyle: .light)), named: "ios-not-editing")
     #endif
   }
   
@@ -50,7 +54,7 @@ final class LoadableListTests: XCTestCase {
     
     #if os(macOS)
     let vc = NSHostingController(rootView: view)
-    assertSnapshot(matching: vc, as: .image(precision: 1, size: CGSize(width: 300, height: 300)))
+    assertSnapshot(matching: vc, as: .image(precision: precision, size: CGSize(width: 300, height: 300)))
     #endif
     #if os(iOS)
     assertSnapshot(matching: view, as: .image(layout: .fixed(width: 300, height: 300), traits: .init(userInterfaceStyle: .light)), named: "ios-editing")
