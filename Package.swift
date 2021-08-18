@@ -14,7 +14,9 @@ let package = Package(
     .library(name: "EditMode", targets: ["EditModeModifier"]),
     .library(name: "EditModeShim", targets: ["EditModeShim"]),
     .library(name: "LoadableList", targets: ["LoadableList"]),
+    .library(name: "LoadablePicker", targets: ["LoadablePicker"]),
     .library(name: "LoadableView", targets: ["LoadableView"]),
+    .library(name: "PreviewSupport", targets: ["PreviewSupport"]),
   ],
   dependencies: [
     .package(url: "https://github.com/pointfreeco/swift-composable-architecture.git", from: "0.8.0"),
@@ -37,6 +39,14 @@ let package = Package(
       dependencies: [
         "LoadableView",
         "EditModeModifier",
+        "PreviewSupport",
+        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+      ]
+    ),
+    .target(
+      name: "LoadablePicker",
+      dependencies: [
+        "LoadableList",
         .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
       ]
     ),
@@ -45,6 +55,10 @@ let package = Package(
       dependencies: [
         .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
       ]
+    ),
+    .target(
+      name: "PreviewSupport",
+      dependencies: []
     ),
     .testTarget(
       name: "TCALoadableTests",

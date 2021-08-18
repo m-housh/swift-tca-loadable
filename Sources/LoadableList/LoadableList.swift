@@ -28,6 +28,26 @@ public struct LoadableListViewEnvironment<Element, LoadRequest, Failure: Error> 
 extension LoadableListViewEnvironment: LoadableEnvironmentRepresentable { }
 public typealias LoadableListViewEnvironmentFor = LoadableListViewEnvironment
 
+#if DEBUG
+extension LoadableListViewEnvironment {
+  public static var failing: LoadableListViewEnvironment {
+    .init(
+      load: { _ in .failing("\(Self.self).load is unimplemented") },
+      mainQueue: .failing("\(Self.self).mainQueue is unimplemented")
+    )
+  }
+}
+#endif
+
+extension LoadableListViewEnvironment {
+  public static var noop: LoadableListViewEnvironment {
+    .init(
+      load: { _ in .none },
+      mainQueue: .main
+    )
+  }
+}
+
 // MARK: - State
 
 /// Represents the state of a loadable list view.
@@ -352,22 +372,10 @@ extension LoadableListView where Element: Identifiable, Id == Element.ID {
 // MARK: - Preview
 #if DEBUG
   import Combine
-
-  struct User: Equatable, Identifiable {
-    let id: UUID = UUID()
-    var name: String
-    
-    static let blob = User.init(name: "blob")
-    static let blobJr = User.init(name: "blob-jr")
-    static let blobSr = User.init(name: "blob-sr")
-  }
-
-  enum LoadError: Error, Equatable {
-    case loadingFailed
-  }
+  import PreviewSupport
 
   extension LoadableListViewEnvironment where Element == User, LoadRequest == EmptyLoadRequest, Failure == LoadError {
-    static let users = Self.init(
+    public static let users = Self.init(
       load: { _ in
         Just([User.blob, .blobJr, .blobSr])
           .delay(for: .seconds(1), scheduler: DispatchQueue.main)
