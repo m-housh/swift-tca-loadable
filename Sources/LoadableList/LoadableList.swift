@@ -1,5 +1,5 @@
 import ComposableArchitecture
-@_exported import EditModeShim
+@_exported import EditModeModifier
 @_exported import LoadableView
 import SwiftUI
 
@@ -41,29 +41,29 @@ public enum ListAction: Equatable {
   case move(IndexSet, Int)
 }
 
-public enum EditModeAction: Equatable {
-  case set(to: EditMode)
-}
-
-public enum LoadableListAction<Element, Failure: Error> where Element: Equatable {
+public enum LoadableListViewAction<Element, Failure: Error> where Element: Equatable {
+  case binding(BindingAction<LoadableListViewStateFor<Element, Failure>>)
   case editMode(EditModeAction)
   case list(ListAction)
   case load(LoadableAction<[Element], Failure>)
 }
-extension LoadableListAction: Equatable where Failure: Equatable { }
-public typealias LoadableListActionFor = LoadableListAction
+extension LoadableListViewAction: Equatable where Failure: Equatable { }
+public typealias LoadableListViewActionFor = LoadableListViewAction
 
 extension Reducer {
   
   public func loadableList<Element, Failure>(
     state: WritableKeyPath<State, LoadableListViewState<Element, Failure>>,
-    action: CasePath<Action, LoadableListAction<Element, Failure>>
+    action: CasePath<Action, LoadableListViewAction<Element, Failure>>
   ) -> Reducer {
     .combine(
-      Reducer<LoadableListViewState<Element, Failure>, LoadableListAction<Element, Failure>, Void> { state, action, _ in
+      Reducer<LoadableListViewState<Element, Failure>, LoadableListViewAction<Element, Failure>, Void> { state, action, _ in
         switch action {
-        case let .editMode(.set(to: editMode)):
-          state.editMode = editMode
+          
+        case .binding:
+          return .none
+          
+        case .editMode:
           return .none
           
         case let .list(.delete(indexSet)):
@@ -78,7 +78,9 @@ extension Reducer {
           return .none
         }
       }
-        .loadable(state: \.loadable, action: /LoadableListAction.load)
+        .binding(action: /LoadableListViewAction.binding)
+        .editMode(state: \.editMode, action: /LoadableListViewAction.editMode)
+        .loadable(state: \.loadable, action: /LoadableListViewAction.load)
         .pullback(state: state, action: action, environment: { _ in }),
       self
     )
@@ -86,19 +88,19 @@ extension Reducer {
   
   public func loadableList<Element, Failure>(
     state: WritableKeyPath<State, LoadableListViewStateFor<Element, Failure>>,
-    action: CasePath<Action, LoadableListActionFor<Element, Failure>>,
+    action: CasePath<Action, LoadableListViewActionFor<Element, Failure>>,
     environment: @escaping (Environment) -> LoadableListViewEnvironmentFor<Element, EmptyLoadRequest, Failure>
   ) -> Reducer where Failure: Equatable, Failure: Error {
     .combine(
       Reducer<
         LoadableListViewState<Element, Failure>,
-        LoadableListAction<Element, Failure>,
+        LoadableListViewAction<Element, Failure>,
         LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>
       >.empty
-        .loadableList(state: \.self, action: /LoadableListAction.self)
+        .loadableList(state: \.self, action: /LoadableListViewAction.self)
         .loadable(
           state: \.loadable,
-          action: /LoadableListAction.load,
+          action: /LoadableListViewAction.load,
           environment: { $0 }
         )
         .pullback(state: state, action: action, environment: environment),
@@ -108,19 +110,19 @@ extension Reducer {
   
   public func loadableList<Element, Failure: Error, Request>(
     state: WritableKeyPath<State, LoadableListViewStateFor<Element, Failure>>,
-    action: CasePath<Action, LoadableListActionFor<Element, Failure>>,
+    action: CasePath<Action, LoadableListViewActionFor<Element, Failure>>,
     environment: @escaping (Environment) -> LoadableListViewEnvironmentFor<Element, Request, Failure>
   ) -> Reducer where Failure: Equatable {
     .combine(
       Reducer<
         LoadableListViewState<Element, Failure>,
-        LoadableListAction<Element, Failure>,
+        LoadableListViewAction<Element, Failure>,
         LoadableListViewEnvironment<Element, Request, Failure>
       >.empty
-        .loadableList(state: \.self, action: /LoadableListAction.self)
+        .loadableList(state: \.self, action: /LoadableListViewAction.self)
         .loadable(
           state: \.loadable,
-          action: /LoadableListAction.load,
+          action: /LoadableListViewAction.load,
           environment: { $0 }
         )
         .pullback(state: state, action: action, environment: environment),
@@ -138,14 +140,14 @@ public struct LoadableListView<
   Row: View
 >: View where Failure: Equatable {
   
-  public let store: Store<LoadableListViewStateFor<Element, Failure>, LoadableListActionFor<Element, Failure>>
+  public let store: Store<LoadableListViewStateFor<Element, Failure>, LoadableListViewActionFor<Element, Failure>>
   
   let autoLoad: Bool
   let id: KeyPath<Element, Id>
   let row: (Element) -> Row
   
   public init(
-    store: Store<LoadableListViewStateFor<Element, Failure>, LoadableListActionFor<Element, Failure>>,
+    store: Store<LoadableListViewStateFor<Element, Failure>, LoadableListViewActionFor<Element, Failure>>,
     autoLoad: Bool = false,
     id: KeyPath<Element, Id>,
     @ViewBuilder row: @escaping (Element) -> Row
@@ -173,9 +175,8 @@ public struct LoadableListView<
           }
         }
       }
-      .environment(
-        \.editMode,
-         viewStore.binding(get: \.editMode, send: { .editMode(.set(to: $0)) })
+      .editMode(
+        store.scope(state: \.editMode, action: LoadableListViewAction.editMode)
       )
     }
   }
@@ -184,7 +185,7 @@ public struct LoadableListView<
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 extension LoadableListView where Element: Identifiable, Id == Element.ID {
   public init(
-    store: Store<LoadableListViewStateFor<Element, Failure>, LoadableListActionFor<Element, Failure>>,
+    store: Store<LoadableListViewStateFor<Element, Failure>, LoadableListViewActionFor<Element, Failure>>,
     autoLoad: Bool = false,
     @ViewBuilder row: @escaping (Element) -> Row
   ) {
@@ -197,6 +198,7 @@ extension LoadableListView where Element: Identifiable, Id == Element.ID {
   }
 }
 
+// MARK: - Preview
 #if DEBUG
   import Combine
 
@@ -227,41 +229,45 @@ extension LoadableListView where Element: Identifiable, Id == Element.ID {
 
   let usersReducer = Reducer<
     LoadableListViewStateFor<User, LoadError>,
-    LoadableListActionFor<User, LoadError>,
+    LoadableListViewActionFor<User, LoadError>,
     LoadableListViewEnvironmentFor<User, EmptyLoadRequest, LoadError>
   >.empty
     .loadableList(
       state: \.self,
-      action: /LoadableListAction<User, LoadError>.self,
+      action: /LoadableListViewAction<User, LoadError>.self,
       environment: { $0 }
     )
 
   @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
+  struct LoadableListViewPreviewWithEditModeButton: View {
+    let store: Store<LoadableListViewStateFor<User, LoadError>, LoadableListViewActionFor<User, LoadError>>
+
+    var body: some View {
+      NavigationView {
+        LoadableListView(store: store, autoLoad: true) { user in
+          Text(user.name)
+        }
+        .toolbar {
+          ToolbarItemGroup(placement: .confirmationAction) {
+            EditButton(
+              store: store.scope(state: \.editMode, action: LoadableListViewAction.editMode)
+            )
+          }
+        }
+      }
+    }
+  }
+
+  @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
   struct LoadableListView_Previews: PreviewProvider {
     static var previews: some View {
-      LoadableListView(
+      LoadableListViewPreviewWithEditModeButton(
         store: .init(
           initialState: .init(),
           reducer: usersReducer,
           environment: .users
-        ),
-        autoLoad: true
-      ) { user in
-        Text(user.name)
-      }
-      
-      NavigationView {
-        LoadableListView(
-          store: .init(
-            initialState: .init(editMode: .active),
-            reducer: usersReducer,
-            environment: .users
-          ),
-          autoLoad: true
-        ) { user in
-          Text(user.name)
-        }
-      }
+        )
+      )
     }
   }
 #endif

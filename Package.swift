@@ -11,6 +11,7 @@ let package = Package(
     .watchOS(.v6),
   ],
   products: [
+    .library(name: "EditMode", targets: ["EditModeModifier"]),
     .library(name: "EditModeShim", targets: ["EditModeShim"]),
     .library(name: "LoadableList", targets: ["LoadableList"]),
     .library(name: "LoadableView", targets: ["LoadableView"]),
@@ -21,6 +22,13 @@ let package = Package(
   ],
   targets: [
     .target(
+      name: "EditModeModifier",
+      dependencies: [
+        "EditModeShim",
+        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+      ]
+    ),
+    .target(
       name: "EditModeShim",
       dependencies: []
     ),
@@ -28,7 +36,7 @@ let package = Package(
       name: "LoadableList",
       dependencies: [
         "LoadableView",
-        "EditModeShim",
+        "EditModeModifier",
         .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
       ]
     ),
