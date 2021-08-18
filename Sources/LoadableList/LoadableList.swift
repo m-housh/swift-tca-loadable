@@ -377,7 +377,7 @@ extension LoadableListView where Element: Identifiable, Id == Element.ID {
   extension LoadableListViewEnvironment where Element == User, LoadRequest == EmptyLoadRequest, Failure == LoadError {
     public static let users = Self.init(
       load: { _ in
-        Just([User.blob, .blobJr, .blobSr])
+        Just([User].users)
           .delay(for: .seconds(1), scheduler: DispatchQueue.main)
           .setFailureType(to: LoadError.self)
           .eraseToEffect()

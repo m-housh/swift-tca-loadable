@@ -13,4 +13,8 @@ import Foundation
     public static let blobJr = User.init(name: "blob-jr")
     public static let blobSr = User.init(name: "blob-sr")
   }
+
+  extension Array where Element == User {
+    public static let users: Self = [.blob, .blobJr, .blobSr]
+  }
 #endif
