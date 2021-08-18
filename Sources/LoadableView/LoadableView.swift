@@ -107,7 +107,7 @@ public struct LoadableView<
   public init(
     store: Store<Loadable<LoadedValue, Failure>, Action>,
     onLoad loadAction: Action,
-    autoLoad: Bool = false,
+    autoLoad: Bool = true,
     @ViewBuilder loadedView: @escaping (Store<LoadedValue, Action>) -> LoadedView,
     @ViewBuilder notRequestedView: @escaping (Store<Void, Action>) -> NotRequestedView,
     @ViewBuilder isLoadingView: @escaping (Store<LoadedValue?, Action>) -> IsLoadingView,
@@ -247,7 +247,7 @@ extension LoadableView {
 extension LoadableView where Action == LoadableAction<LoadedValue, Failure> {
   public init(
     store: Store<Loadable<LoadedValue, Failure>, Action>,
-    autoLoad: Bool = false,
+    autoLoad: Bool = true,
     @ViewBuilder loadedView: @escaping (Store<LoadedValue, Action>) -> LoadedView,
     @ViewBuilder notRequestedView: @escaping (Store<Void, Action>) -> NotRequestedView,
     @ViewBuilder isLoadingView: @escaping (Store<LoadedValue?, Action>) -> IsLoadingView,
@@ -276,7 +276,7 @@ ErrorView == WithViewStore<Failure, Action, VStack<TupleView<(Text, Button<Text>
 {
   public init(
     store: Store<Loadable<LoadedValue, Failure>, Action>,
-    autoLoad: Bool = false,
+    autoLoad: Bool = true,
     onLoad loadAction: Action,
     failure: Failure.Type = Failure.self,
     @ViewBuilder loadedView: @escaping (Store<LoadedValue, Action>) -> LoadedView
@@ -346,7 +346,7 @@ ErrorView == WithViewStore<Failure, Action, VStack<TupleView<(Text, Button<Text>
 {
   public init(
     store: Store<Loadable<LoadedValue, Failure>, Action>,
-    autoLoad: Bool = false,
+    autoLoad: Bool = true,
     failure: Failure.Type = Failure.self,
     @ViewBuilder loadedView: @escaping (Store<LoadedValue, Action>) -> LoadedView
   ) {

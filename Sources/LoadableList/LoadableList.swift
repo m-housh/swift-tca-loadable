@@ -3,11 +3,20 @@ import ComposableArchitecture
 @_exported import LoadableView
 import SwiftUI
 
+/// Represents the environment for a loadable list view.
 public struct LoadableListViewEnvironment<Element, LoadRequest, Failure: Error> {
   
+  /// Load the items.
   public var load: (LoadRequest) -> Effect<[Element], Failure>
+  
+  /// The main dispatch queue.
   public var mainQueue: AnySchedulerOf<DispatchQueue>
   
+  /// Create a new environment.
+  ///
+  /// - Parameters:
+  ///   - load: Load the items.
+  ///   - mainQueue: The main dispatch queue.
   public init(
     load: @escaping (LoadRequest) -> Effect<[Element], Failure>,
     mainQueue: AnySchedulerOf<DispatchQueue>
@@ -20,10 +29,21 @@ extension LoadableListViewEnvironment: LoadableEnvironmentRepresentable { }
 public typealias LoadableListViewEnvironmentFor = LoadableListViewEnvironment
 
 // MARK: - State
+
+/// Represents the state of a loadable list view.
 public struct LoadableListViewState<Element, Failure: Error> {
+  
+  /// The current edit mode of the view.
   public var editMode: EditMode
+  
+  /// The loadable items.
   public var loadable: Loadable<[Element], Failure>
   
+  /// Create a new loadable list view state.
+  ///
+  /// - Parameters:
+  ///   - editMode: The current edit mode.
+  ///   - loadable: The loadable items.
   public init(
     editMode: EditMode = .inactive,
     loadable: Loadable<[Element], Failure> = .notRequested
@@ -36,13 +56,19 @@ extension LoadableListViewState: Equatable where Element: Equatable, Failure: Eq
 public typealias LoadableListViewStateFor = LoadableListViewState
 
 // MARK: - Action
+
+/// Represents common actions that can be taken on lists.
 public enum ListAction: Equatable {
+  
+  /// Delete rows from the list.
   case delete(IndexSet)
+  
+  /// Move rows in the list.
   case move(IndexSet, Int)
 }
 
+/// Represents the actions that can be taken on a loadable list view.
 public enum LoadableListViewAction<Element, Failure: Error> where Element: Equatable {
-  case binding(BindingAction<LoadableListViewStateFor<Element, Failure>>)
   case editMode(EditModeAction)
   case list(ListAction)
   case load(LoadableAction<[Element], Failure>)
@@ -52,6 +78,55 @@ public typealias LoadableListViewActionFor = LoadableListViewAction
 
 extension Reducer {
   
+  /// Enhances a reducer with list actions.
+  ///
+  /// - Parameters:
+  ///   - state: The list state.
+  ///   - action: The list actions.
+  public func list<Element>(
+    state: WritableKeyPath<State, [Element]>,
+    action: CasePath<Action, ListAction>
+  ) -> Reducer {
+    .combine(
+      Reducer<[Element], ListAction, Void> { state, action, _ in
+        switch action {
+        case let .delete(indexSet):
+          state.remove(atOffsets: indexSet)
+          return .none
+          
+        case let .move(source, destination):
+          state.move(fromOffsets: source, toOffset: destination)
+          return .none
+        }
+      }
+        .pullback(state: state, action: action, environment: { _ in }),
+      self
+    )
+  }
+  
+  /// Enhances a reducer with list actions for an optional list.
+  ///
+  /// - Parameters:
+  ///   - state: The list state.
+  ///   - action: The list actions.
+  public func list<Element>(
+    state: WritableKeyPath<State, [Element]?>,
+    action: CasePath<Action, ListAction>
+  ) -> Reducer {
+    .combine(
+      Reducer<[Element], ListAction, Void>.empty
+        .list(state: \.self, action: /ListAction.self)
+        .optional()
+        .pullback(state: state, action: action, environment: { _ in }),
+      self
+    )
+  }
+  
+  /// Enhances a reducer with loadable list actions.
+  ///
+  /// - Parameters:
+  ///   - state: The loadable list state.
+  ///   - action: The loadable list actions.
   public func loadableList<Element, Failure>(
     state: WritableKeyPath<State, LoadableListViewState<Element, Failure>>,
     action: CasePath<Action, LoadableListViewAction<Element, Failure>>
@@ -60,32 +135,30 @@ extension Reducer {
       Reducer<LoadableListViewState<Element, Failure>, LoadableListViewAction<Element, Failure>, Void> { state, action, _ in
         switch action {
           
-        case .binding:
-          return .none
-          
         case .editMode:
           return .none
           
-        case let .list(.delete(indexSet)):
-          state.loadable.rawValue?.remove(atOffsets: indexSet)
+        case .list:
           return .none
-          
-        case let .list(.move(source, destination)):
-          state.loadable.rawValue?.move(fromOffsets: source, toOffset: destination)
-          return .none
-          
+
         case .load:
           return .none
         }
       }
-        .binding(action: /LoadableListViewAction.binding)
         .editMode(state: \.editMode, action: /LoadableListViewAction.editMode)
+        .list(state: \.loadable.rawValue, action: /LoadableListViewAction.list)
         .loadable(state: \.loadable, action: /LoadableListViewAction.load)
         .pullback(state: state, action: action, environment: { _ in }),
       self
     )
   }
   
+  /// Enhances a reducer with loadable list actions.
+  ///
+  /// - Parameters:
+  ///   - state: The loadable list state.
+  ///   - action: The loadable list actions.
+  ///   - environment: The loadable list environment.
   public func loadableList<Element, Failure>(
     state: WritableKeyPath<State, LoadableListViewStateFor<Element, Failure>>,
     action: CasePath<Action, LoadableListViewActionFor<Element, Failure>>,
@@ -108,6 +181,12 @@ extension Reducer {
     )
   }
   
+  /// Enhances a reducer with loadable list actions.
+  ///
+  /// - Parameters:
+  ///   - state: The loadable list state.
+  ///   - action: The loadable list actions.
+  ///   - environment: The loadable list environment.
   public func loadableList<Element, Failure: Error, Request>(
     state: WritableKeyPath<State, LoadableListViewStateFor<Element, Failure>>,
     action: CasePath<Action, LoadableListViewActionFor<Element, Failure>>,
@@ -132,6 +211,65 @@ extension Reducer {
 }
 
 // MARK: - View
+
+/// A loadable view that shows a list of items once they've been loaded.
+///
+/// **Example**:
+/// ```swift
+/// struct User: Equatable, Identifiable {
+///   let id: UUID = UUID()
+///   var name: String
+///
+///   static let blob = User.init(name: "blob")
+///   static let blobJr = User.init(name: "blob-jr")
+///   static let blobSr = User.init(name: "blob-sr")
+/// }
+///
+/// enum LoadError: Error, Equatable {
+///   case loadingFailed
+/// }
+///
+/// extension LoadableListViewEnvironment where Element == User, LoadRequest == EmptyLoadRequest, Failure == LoadError {
+///   static let users = Self.init(
+///     load: { _ in
+///        Just([User.blob, .blobJr, .blobSr])
+///          .delay(for: .seconds(1), scheduler: DispatchQueue.main) // simulate a database call
+///          .setFailureType(to: LoadError.self)
+///          .eraseToEffect()
+///     },
+///     mainQueue: .main
+///   )
+/// }
+///
+/// let usersReducer = Reducer<
+///    LoadableListViewStateFor<User, LoadError>,
+///   LoadableListViewActionFor<User, LoadError>,
+///    LoadableListViewEnvironmentFor<User, EmptyLoadRequest, LoadError>
+/// >.empty
+///   .loadableList(
+///      state: \.self,
+///      action: /LoadableListViewActionFor<User, LoadError>.self,
+///      environment: { $0 }
+///   )
+///
+/// struct LoadableListViewPreviewWithEditModeButton: View {
+///   let store: Store<LoadableListViewStateFor<User, LoadError>, LoadableListViewActionFor<User, LoadError>>
+///
+///   var body: some View {
+///     NavigationView {
+///        LoadableListView(store: store, autoLoad: true) { user in
+///          Text(user.name)
+///        }
+///        .toolbar {
+///           ToolbarItemGroup(placement: .confirmationAction) {
+///              EditButton(
+///               store: store.scope(state: \.editMode, action: LoadableListViewAction.editMode)
+///              )
+///           }
+///       }
+///      }
+///   }
+/// }
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 public struct LoadableListView<
   Element: Equatable,
@@ -146,9 +284,16 @@ public struct LoadableListView<
   let id: KeyPath<Element, Id>
   let row: (Element) -> Row
   
+  /// Create a new loadable list view.
+  ///
+  /// - Parameters:
+  ///   - store: The store for the view state.
+  ///   - autoLoad: Whether we automatically load items when the view first appears.
+  ///   - id: The id used to identify the row.
+  ///   - row: The view builder for an individual row in the list.
   public init(
     store: Store<LoadableListViewStateFor<Element, Failure>, LoadableListViewActionFor<Element, Failure>>,
-    autoLoad: Bool = false,
+    autoLoad: Bool = true,
     id: KeyPath<Element, Id>,
     @ViewBuilder row: @escaping (Element) -> Row
   ) {
@@ -184,9 +329,15 @@ public struct LoadableListView<
 
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 extension LoadableListView where Element: Identifiable, Id == Element.ID {
+  /// Create a new loadable list view.
+  ///
+  /// - Parameters:
+  ///   - store: The store for the view state.
+  ///   - autoLoad: Whether we automatically load items when the view first appears.
+  ///   - row: The view builder for an individual row in the list.
   public init(
     store: Store<LoadableListViewStateFor<Element, Failure>, LoadableListViewActionFor<Element, Failure>>,
-    autoLoad: Bool = false,
+    autoLoad: Bool = true,
     @ViewBuilder row: @escaping (Element) -> Row
   ) {
     self.init(
@@ -234,7 +385,7 @@ extension LoadableListView where Element: Identifiable, Id == Element.ID {
   >.empty
     .loadableList(
       state: \.self,
-      action: /LoadableListViewAction<User, LoadError>.self,
+      action: /LoadableListViewActionFor<User, LoadError>.self,
       environment: { $0 }
     )
 
