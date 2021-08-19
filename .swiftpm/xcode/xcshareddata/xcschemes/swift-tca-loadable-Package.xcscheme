@@ -42,6 +42,20 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "LoadableForEachStore"
+               BuildableName = "LoadableForEachStore"
+               BlueprintName = "LoadableForEachStore"
+               ReferencedContainer = "container:">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "LoadableList"
                BuildableName = "LoadableList"
                BlueprintName = "LoadableList"
@@ -112,6 +126,20 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "LoadablePickerTests"
+               BuildableName = "LoadablePickerTests"
+               BlueprintName = "LoadablePickerTests"
+               ReferencedContainer = "container:">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "TCALoadableTests"
                BuildableName = "TCALoadableTests"
                BlueprintName = "TCALoadableTests"
@@ -129,20 +157,6 @@
                BlueprintIdentifier = "EditModeModifier"
                BuildableName = "EditModeModifier"
                BlueprintName = "EditModeModifier"
-               ReferencedContainer = "container:">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "LoadableForEachStore"
-               BuildableName = "LoadableForEachStore"
-               BlueprintName = "LoadableForEachStore"
                ReferencedContainer = "container:">
             </BuildableReference>
          </BuildActionEntry>
@@ -168,9 +182,9 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "TCALoadableTests"
-               BuildableName = "TCALoadableTests"
-               BlueprintName = "TCALoadableTests"
+               BlueprintIdentifier = "LoadablePickerTests"
+               BuildableName = "LoadablePickerTests"
+               BlueprintName = "LoadablePickerTests"
                ReferencedContainer = "container:">
             </BuildableReference>
          </TestableReference>
@@ -178,9 +192,9 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "LoadablePickerTests"
-               BuildableName = "LoadablePickerTests"
-               BlueprintName = "LoadablePickerTests"
+               BlueprintIdentifier = "TCALoadableTests"
+               BuildableName = "TCALoadableTests"
+               BlueprintName = "TCALoadableTests"
                ReferencedContainer = "container:">
             </BuildableReference>
          </TestableReference>

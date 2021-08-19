@@ -14,9 +14,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "LoadableView"
-               BuildableName = "LoadableView"
-               BlueprintName = "LoadableView"
+               BlueprintIdentifier = "LoadableForEachStore"
+               BuildableName = "LoadableForEachStore"
+               BlueprintName = "LoadableForEachStore"
                ReferencedContainer = "container:">
             </BuildableReference>
          </BuildActionEntry>
@@ -50,9 +50,9 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "LoadableView"
-            BuildableName = "LoadableView"
-            BlueprintName = "LoadableView"
+            BlueprintIdentifier = "LoadableForEachStore"
+            BuildableName = "LoadableForEachStore"
+            BlueprintName = "LoadableForEachStore"
             ReferencedContainer = "container:">
          </BuildableReference>
       </MacroExpansion>

@@ -5,7 +5,7 @@
 import Foundation
 
 /// The actions that a loadable view can use.
-public enum LoadableAction<LoadedValue: Equatable, Failure: Error> {
+public enum LoadableAction<LoadedValue, Failure: Error> {
   
   /// Load or refresh the item.
   case load
@@ -14,6 +14,6 @@ public enum LoadableAction<LoadedValue: Equatable, Failure: Error> {
   case loadingCompleted(Result<LoadedValue, Failure>)
 }
 
-extension LoadableAction: Equatable where Failure: Equatable { }
+extension LoadableAction: Equatable where LoadedValue: Equatable, Failure: Equatable { }
 
 public typealias LoadableActionsFor = LoadableAction

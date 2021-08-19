@@ -7,10 +7,12 @@ import SwiftUI
 // MARK: - State
 
 /// Represents the state of a loadable picker view.
-public struct LoadablePickerState<Element: Identifiable, Failure: Error> {
+public struct LoadablePickerState<Element, Id: Hashable, Failure: Error> {
   
   /// The loadable items.
   public var loadable: Loadable<[Element], Failure>
+  
+  public var id: KeyPath<Element, Id>
   
   /// The picker selection.
   public var selection: Element.ID?
@@ -21,19 +23,33 @@ public struct LoadablePickerState<Element: Identifiable, Failure: Error> {
   ///   - loadable: The loadable items.
   ///   - selection: The picker selection.
   public init(
+    id: KeyPath<Element, Id>,
     loadable: Loadable<[Element], Failure> = .notRequested,
-    selection: Element.ID? = nil
+    selection: Id? = nil
   ) {
     self.loadable = loadable
     self.selection = selection
   }
 }
-extension LoadablePickerState: Equatable where Element: Equatable, Element.ID: Equatable, Failure: Equatable { }
+extension LoadablePickerState: Equatable where Element: Equatable, Failure: Equatable { }
+extension LoadablePickerState where Element: Identifiable, Id == Element.ID {
+  
+  public init(
+    loadable: Loadable<[Element], Failure> = .notRequested,
+    selection: Element.ID? = nil
+  ) {
+    self.init(
+      id: \.id,
+      loadable: loadable,
+      selection: selection
+    )
+  }
+}
 
 // MARK: - Action
 
 /// Represents the actions take by a loadable picker view.
-public enum LoadablePickerAction<Element: Identifiable, Failure: Error> where Element: Equatable {
+public enum LoadablePickerAction<Element: Identifiable, Failure: Error> {
   
   /// Changes to the picker state.
   case binding(BindingAction<LoadablePickerState<Element, Failure>>)
@@ -41,7 +57,7 @@ public enum LoadablePickerAction<Element: Identifiable, Failure: Error> where El
   /// Load actions.
   case loadable(LoadableAction<[Element], Failure>)
 }
-extension LoadablePickerAction: Equatable where Failure: Equatable { }
+extension LoadablePickerAction: Equatable where Element: Equatable, Failure: Equatable { }
 
 extension Reducer {
   
@@ -56,7 +72,7 @@ extension Reducer {
   public func loadablePicker<Element: Identifiable, Failure: Error>(
     state: WritableKeyPath<State, LoadablePickerState<Element, Failure>>,
     action: CasePath<Action, LoadablePickerAction<Element, Failure>>
-  ) -> Reducer where Element: Equatable {
+  ) -> Reducer {
     .combine(
       Reducer<LoadablePickerState<Element, Failure>, LoadablePickerAction<Element, Failure>, Void>
         .empty
@@ -77,7 +93,7 @@ extension Reducer {
     state: WritableKeyPath<State, LoadablePickerState<Element, Failure>>,
     action: CasePath<Action, LoadablePickerAction<Element, Failure>>,
     environment: @escaping (Environment) -> LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>
-  ) -> Reducer where Element: Equatable, Failure: Equatable {
+  ) -> Reducer {
     .combine(
       Reducer<
         LoadablePickerState<Element, Failure>,
@@ -151,6 +167,7 @@ extension Reducer {
 ///     }
 ///   }
 /// }
+// TODO: Remove Identifiable requirement.
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 public struct LoadablePicker<
   Element: Identifiable,

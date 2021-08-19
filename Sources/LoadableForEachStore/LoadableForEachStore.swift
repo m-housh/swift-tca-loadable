@@ -5,23 +5,6 @@ import ComposableArchitecture
 import SwiftUI
 import IdentifiedCollections
 
-fileprivate struct LoadableForEachEnvironment<Element, Id: Hashable, LoadRequest, Failure: Error> {
-  var load: (LoadRequest) -> Effect<IdentifiedArray<Id, Element>, Failure>
-  var mainQueue: AnySchedulerOf<DispatchQueue>
-  
-  init(
-    listEnv: LoadableListViewEnvironment<Element, LoadRequest, Failure>,
-    id: KeyPath<Element, Id>
-  ) {
-    self.load = { request in
-      listEnv.load(request)
-        .map { IdentifiedArray.init(uniqueElements: $0, id: id) }
-    }
-    self.mainQueue = listEnv.mainQueue
-  }
-}
-extension LoadableForEachEnvironment: LoadableEnvironmentRepresentable { }
-
 // MARK: State
 public struct LoadableForEachStoreState<Element, Id: Hashable, Failure: Error> {
   
@@ -29,7 +12,11 @@ public struct LoadableForEachStoreState<Element, Id: Hashable, Failure: Error> {
   public var id: KeyPath<Element, Id>
   public var loadable: Loadable<IdentifiedArray<Id, Element>, Failure>
   
-  fileprivate var identifiedArray: IdentifiedArray<Id, Element> {
+  // allows the for each to work on reducers, could not find an easy way
+  // to get to work with the optional identified array that's
+  // returned from the loadable, so we return an empty identified
+  // array until we have loaded.
+  internal var identifiedArray: IdentifiedArray<Id, Element> {
     get { loadable.rawValue ?? .init(uniqueElements: [], id: id) }
     set { loadable.rawValue = newValue }
   }
@@ -61,7 +48,7 @@ extension LoadableForEachStoreState where Element: Identifiable, Id == Element.I
 
 // MARK: - Action
 public enum LoadableForEachStoreAction<
-  Element: Equatable,
+  Element,
   ElementAction,
   Id: Hashable,
   Failure: Error
@@ -71,246 +58,8 @@ public enum LoadableForEachStoreAction<
   case loadable(LoadableAction<IdentifiedArray<Id, Element>, Failure>)
   case element(id: Id, action: ElementAction)
 }
-extension LoadableForEachStoreAction: Equatable where ElementAction: Equatable, Failure: Equatable { }
+extension LoadableForEachStoreAction: Equatable where Element: Equatable, ElementAction: Equatable, Failure: Equatable { }
 
-extension Reducer {
-  
-  public func list<Element, Id: Hashable>(
-    state: WritableKeyPath<State, IdentifiedArray<Id, Element>>,
-    action: CasePath<Action, ListAction>
-  ) -> Reducer {
-    .combine(
-      Reducer<IdentifiedArray<Id, Element>, ListAction, Void> { state, action, _ in
-        switch action {
-        case let .delete(indexSet):
-          state.remove(atOffsets: indexSet)
-          return .none
-          
-        case let .move(source, destination):
-          state.move(fromOffsets: source, toOffset: destination)
-          return .none
-        }
-      }
-        .pullback(state: state, action: action, environment: { _ in }),
-      self
-    )
-  }
-  
-  public func list<Element, Id: Hashable>(
-    state: WritableKeyPath<State, IdentifiedArray<Id, Element>?>,
-    action: CasePath<Action, ListAction>
-  ) -> Reducer {
-    .combine(
-      Reducer<IdentifiedArray<Id, Element>, ListAction, Void>
-        .empty
-        .list(state: \.self, action: /ListAction.self)
-        .optional()
-        .pullback(state: state, action: action, environment: { _ in }),
-      self
-    )
-  }
-  
-  public func loadableForEachStore<
-    Element,
-    ElementAction,
-    Id: Hashable,
-    Failure: Error
-  >(
-    state: WritableKeyPath<State, LoadableForEachStoreState<Element, Id, Failure>>,
-    action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Id, Failure>>
-  ) -> Reducer {
-    .combine(
-      Reducer<
-        LoadableForEachStoreState<Element, Id, Failure>,
-        LoadableForEachStoreAction<Element, ElementAction, Id, Failure>,
-        Void
-      >.empty
-        .editMode(state: \.editMode, action: /LoadableForEachStoreAction.editMode)
-        .list(state: \.loadable.rawValue, action: /LoadableForEachStoreAction.list)
-        .loadable(state: \.loadable, action: /LoadableForEachStoreAction.loadable)
-        .pullback(state: state, action: action, environment: { _ in }),
-      self
-    )
-  }
-  
-  public func loadableForEachStore<
-    Element,
-    ElementAction,
-    Id: Hashable,
-    Failure: Error
-  >(
-    id: KeyPath<Element, Id>,
-    state: WritableKeyPath<State, LoadableForEachStoreState<Element, Id, Failure>>,
-    action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Id, Failure>>,
-    environment: @escaping (Environment) -> LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>
-  ) -> Reducer {
-    .combine(
-      Reducer<
-        LoadableForEachStoreState<Element, Id, Failure>,
-        LoadableForEachStoreAction<Element, ElementAction, Id, Failure>,
-        LoadableForEachEnvironment<Element, Id, EmptyLoadRequest, Failure>
-      >.empty
-        .editMode(state: \.editMode, action: /LoadableForEachStoreAction.editMode)
-        .list(state: \.loadable.rawValue, action: /LoadableForEachStoreAction.list)
-        .loadable(state: \.loadable, action: /LoadableForEachStoreAction.loadable, environment: { $0 })
-        .pullback(state: state, action: action, environment: { LoadableForEachEnvironment(listEnv: environment($0), id: id) }),
-      self
-    )
-  }
-  
-  public func loadableForEachStore<
-    Element,
-    ElementAction,
-    Failure: Error
-  >(
-    state: WritableKeyPath<State, LoadableForEachStoreState<Element, Element.ID, Failure>>,
-    action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Element.ID, Failure>>,
-    environment: @escaping (Environment) -> LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>
-  ) -> Reducer where Element: Identifiable {
-    .combine(
-      Reducer<
-        LoadableForEachStoreState<Element, Element.ID, Failure>,
-        LoadableForEachStoreAction<Element, ElementAction, Element.ID, Failure>,
-        LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>
-      >.empty
-        .loadableForEachStore(id: \Element.id, state: \.self, action: /LoadableForEachStoreAction.self, environment: { $0 })
-        .pullback(state: state, action: action, environment: environment),
-      self
-    )
-  }
-  
-  public func loadableForEachStore<
-    Element,
-    ElementAction,
-    ElementEnvironment,
-    Id: Hashable,
-    Failure: Error
-  >(
-    id: KeyPath<Element, Id>,
-    state: WritableKeyPath<State, LoadableForEachStoreState<Element, Id, Failure>>,
-    action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Id, Failure>>,
-    environment: @escaping (Environment) -> LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>,
-    forEach elementReducer: Reducer<Element, ElementAction, ElementEnvironment>,
-    elementEnvironment: @escaping (Environment) -> ElementEnvironment
-  ) -> Reducer {
-    
-    let reducer = Reducer<
-      LoadableForEachStoreState<Element, Id, Failure>,
-      LoadableForEachStoreAction<Element, ElementAction, Id, Failure>,
-      LoadableForEachEnvironment<Element, Id, EmptyLoadRequest, Failure>
-    >.empty
-      .editMode(state: \.editMode, action: /LoadableForEachStoreAction.editMode)
-      .list(state: \.loadable.rawValue, action: /LoadableForEachStoreAction.list)
-      .loadable(state: \.loadable, action: /LoadableForEachStoreAction.loadable, environment: { $0 })
-      .pullback(state: state, action: action, environment: { LoadableForEachEnvironment(listEnv: environment($0), id: id) })
-    
-    
-    return .combine(
-      reducer.forEach(elementReducer: elementReducer, environment: elementEnvironment),
-      self
-    )
-  }
-  
-  public func loadableForEachStore<
-    Element,
-    ElementAction,
-    ElementEnvironment,
-    Failure: Error
-  >(
-    state: WritableKeyPath<State, LoadableForEachStoreState<Element, Element.ID, Failure>>,
-    action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Element.ID, Failure>>,
-    environment: @escaping (Environment) -> LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>,
-    forEach elementReducer: Reducer<Element, ElementAction, ElementEnvironment>,
-    elementEnvironment: @escaping (Environment) -> ElementEnvironment
-  ) -> Reducer where Element: Identifiable {
-    loadableForEachStore(
-      id: \.id,
-      state: state,
-      action: action,
-      environment: environment,
-      forEach: elementReducer,
-      elementEnvironment: elementEnvironment
-    )
-  }
-  
-  public func loadableForEachStore<
-    Element,
-    ElementAction,
-    Failure: Error
-  >(
-    state: WritableKeyPath<State, LoadableForEachStoreState<Element, Element.ID, Failure>>,
-    action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Element.ID, Failure>>,
-    environment: @escaping (Environment) -> LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>,
-    forEach elementReducer: Reducer<Element, ElementAction, Void>
-  ) -> Reducer where Element: Identifiable {
-    loadableForEachStore(
-      id: \.id,
-      state: state,
-      action: action,
-      environment: environment,
-      forEach: elementReducer,
-      elementEnvironment: { _ in }
-    )
-  }
-  
-  
-  public func loadableForEachStore<
-    Element,
-    ElementAction,
-    Id: Hashable,
-    Failure: Error
-  >(
-    id: KeyPath<Element, Id>,
-    state: WritableKeyPath<State, LoadableForEachStoreState<Element, Id, Failure>>,
-    action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Id, Failure>>,
-    environment: @escaping (Environment) -> LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>,
-    forEach elementReducer: Reducer<Element, ElementAction, Void>
-  ) -> Reducer {
-    self.loadableForEachStore(
-      id: id,
-      state: state,
-      action: action,
-      environment: environment,
-      forEach: elementReducer,
-      elementEnvironment: { _ in }
-    )
-  }
-  
-  // These cause crashes for some reason in previews, but work in an application.
-  public func forEach<
-   Element,
-   ElementAction,
-   ElementEnvironment,
-   Id: Hashable,
-   Failure: Error
-  >(
-    elementReducer: Reducer<Element, ElementAction, ElementEnvironment>,
-    environment: @escaping (Environment) -> ElementEnvironment
-  ) -> Reducer where State == LoadableForEachStoreState<Element, Id, Failure>,
-                     Action == LoadableForEachStoreAction<Element, ElementAction, Id, Failure>
-  {
-    self.combined(with:
-      elementReducer.forEach(
-        state: \.identifiedArray,
-        action: /Action.element(id:action:),
-        environment: { environment($0) }
-      )
-    )
-  }
-  
-  public func forEach<
-   Element,
-   ElementAction,
-   Id: Hashable,
-   Failure: Error
-  >(
-    elementReducer: Reducer<Element, ElementAction, Void>
-  ) -> Reducer where State == LoadableForEachStoreState<Element, Id, Failure>,
-                     Action == LoadableForEachStoreAction<Element, ElementAction, Id, Failure>
-  {
-    self.forEach(elementReducer: elementReducer, environment: { _ in })
-  }
-}
 
 // MARK: - View
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
@@ -400,30 +149,7 @@ extension LoadableForEachStore where Element: Identifiable, Id == Element.ID {
 #if DEBUG
   import PreviewSupport
 
-  // Crashes in previews, but works in a real application.
-//  let previewReducer = Reducer<
-//    LoadableForEachStoreState<User, User.ID, LoadError>,
-//    LoadableForEachStoreAction<User, UserAction, User.ID, LoadError>,
-//    LoadableListViewEnvironment<User, EmptyLoadRequest, LoadError>
-//  >.empty
-//    .loadableForEachStore(
-//      state: \.self,
-//      action: /LoadableForEachStoreAction.self,
-//      environment: { $0 }
-//    )
-//    .forEach(elementReducer: userReducer)
-    
-let previewReducer = Reducer<
-  LoadableForEachStoreState<User, User.ID, LoadError>,
-  LoadableForEachStoreAction<User, UserAction, User.ID, LoadError>,
-  LoadableListViewEnvironment<User, EmptyLoadRequest, LoadError>
->.combine(
-  userReducer.forEach(
-    state: \LoadableForEachStoreState<User, User.ID, LoadError>.identifiedArray,
-    action: /LoadableForEachStoreAction<User, UserAction, User.ID, LoadError>.element(id:action:),
-    environment: { _ in }
-  ),
-  Reducer<
+  let previewReducer = Reducer<
     LoadableForEachStoreState<User, User.ID, LoadError>,
     LoadableForEachStoreAction<User, UserAction, User.ID, LoadError>,
     LoadableListViewEnvironment<User, EmptyLoadRequest, LoadError>
@@ -431,59 +157,32 @@ let previewReducer = Reducer<
     .loadableForEachStore(
       state: \.self,
       action: /LoadableForEachStoreAction.self,
-      environment: { $0 }
+      environment: { $0 },
+      forEach: userReducer
     )
-//    .forEach(elementReducer: userReducer, environment: { _ in })
-)
 
   @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-  public struct LoadableForEachStore_Previews: PreviewProvider {
-    public static var previews: some View {
-      LoadableForEachStore<
-        User,
-        UserAction,
-        User.ID,
-        LoadError,
-        WithViewStore<
-          User,
-          UserAction,
-          AnyView
-        >
-      >(
+  struct LoadableForEachStore_Previews: PreviewProvider {
+    static var previews: some View {
+      LoadableForEachStore(
         store: .init(
-          initialState: LoadableForEachStoreState<User, User.ID, LoadError>(),
-          reducer: previewReducer.debug(),
-          environment: LoadableListViewEnvironment.users
+          initialState: .init(),
+          reducer: previewReducer,
+          environment: .users
         ),
         autoLoad: true
       ) { store in
         WithViewStore(store) { viewStore in
-          AnyView(HStack {
+          HStack {
             Text(viewStore.name)
             Spacer()
             Toggle(
               "Favorite",
               isOn: viewStore.binding(keyPath: \.isFavorite, send: UserAction.binding)
             )
-          })
+          }
         }
       }
-//      LoadableForEachStore(
-//        store: .init(
-//          initialState: .init(),
-//          reducer: previewReducer,
-//          environment: .users
-//        ),
-//        autoLoad: true
-//      ) { store in
-//        WithViewStore(store) { viewStore in
-//          HStack {
-//            Text(viewStore.name)
-//            Spacer()
-//            Toggle("Favorite", isOn: viewStore.binding(keyPath: \.isFavorite, send: UserAction.binding))
-//          }
-//        }
-//      }
     }
   }
 

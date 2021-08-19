@@ -88,16 +88,17 @@ public enum ListAction: Equatable {
 }
 
 /// Represents the actions that can be taken on a loadable list view.
-public enum LoadableListViewAction<Element, Failure: Error> where Element: Equatable {
+public enum LoadableListViewAction<Element, Failure: Error> {
   case editMode(EditModeAction)
   case list(ListAction)
   case loadable(LoadableAction<[Element], Failure>)
 }
-extension LoadableListViewAction: Equatable where Failure: Equatable { }
+extension LoadableListViewAction: Equatable where Element: Equatable, Failure: Equatable { }
 public typealias LoadableListViewActionFor = LoadableListViewAction
 
 extension Reducer {
   
+  // TODO: This should be generic of Collection.
   /// Enhances a reducer with list actions.
   ///
   /// - Parameters:
@@ -124,6 +125,7 @@ extension Reducer {
     )
   }
   
+  // TODO: This should be generic of Collection.
   /// Enhances a reducer with list actions for an optional list.
   ///
   /// - Parameters:
