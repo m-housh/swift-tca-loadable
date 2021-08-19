@@ -28,14 +28,14 @@ final class LoadableListTests: XCTestCase {
       environment: .test(scheduler: scheduler.eraseToAnyScheduler())
     )
     
-    store.send(.load(.load)) {
+    store.send(.loadable(.load)) {
       $0.loadable = .isLoading(previous: nil)
     }
     scheduler.advance()
-    store.receive(.load(.loadingCompleted(.success([.blob, .blobJr, .blobSr])))) {
+    store.receive(.loadable(.loadingCompleted(.success([.blob, .blobJr, .blobSr])))) {
       $0.loadable = .loaded([.blob, .blobJr, .blobSr])
     }
-    store.send(.load(.loadingCompleted(.failure(.loadingFailed)))) {
+    store.send(.loadable(.loadingCompleted(.failure(.loadingFailed)))) {
       $0.loadable = .failed(.loadingFailed)
     }
   }
@@ -76,11 +76,11 @@ final class LoadableListTests: XCTestCase {
       reducer: userReducerWithCustomRequest,
       environment: .testWithCustomRequest(scheduler: scheduler.eraseToAnyScheduler())
     )
-    store.send(.load(.load)) {
+    store.send(.loadable(.load)) {
       $0.list.loadable = .isLoading(previous: nil)
     }
     scheduler.advance()
-    store.receive(.load(.loadingCompleted(.success([.blob, .blobJr, .blobSr])))) {
+    store.receive(.loadable(.loadingCompleted(.success([.blob, .blobJr, .blobSr])))) {
       $0.list.loadable = .loaded([.blob, .blobJr, .blobSr])
     }
   }
@@ -92,11 +92,11 @@ final class LoadableListTests: XCTestCase {
       reducer: userReducerWithCustomRequest,
       environment: .testWithCustomRequest(scheduler: scheduler.eraseToAnyScheduler())
     )
-    store.send(.load(.load)) {
+    store.send(.loadable(.load)) {
       $0.list.loadable = .isLoading(previous: nil)
     }
     scheduler.advance()
-    store.receive(.load(.loadingCompleted(.success([.blob])))) {
+    store.receive(.loadable(.loadingCompleted(.success([.blob])))) {
       $0.list.loadable = .loaded([.blob])
     }
   }
@@ -182,19 +182,19 @@ let userReducerWithCustomRequest = Reducer<
     return .none
   case .list:
     return .none
-  case .load(.load):
+  case .loadable(.load):
     return environment.load(.init(name: state.nameQuery))
       .receive(on: environment.mainQueue)
       .catchToEffect()
-      .map { .load(.loadingCompleted($0)) }
-  case .load:
+      .map { .loadable(.loadingCompleted($0)) }
+  case .loadable:
     return .none
   }
 }
 .loadableList(
   state: \.list,
-  action: /LoadableListViewAction.self,
-  environment: { $0 }
+  action: /LoadableListViewAction.self
+//  environment: { $0 }
 )
 
 extension LoadableListViewEnvironment where Element == User, LoadRequest == EmptyLoadRequest, Failure == LoadError {

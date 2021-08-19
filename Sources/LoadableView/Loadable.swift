@@ -6,22 +6,22 @@ import Foundation
 
 /// Represents the different states of a loadable item.
 @dynamicMemberLookup
-public enum Loadable<State, Failure: Error> {
+public enum Loadable<Value, Failure: Error> {
   
   /// Item has not yet been loaded.
   case notRequested
   
   /// Item is in the process of loading and any previously loaded state.
-  case isLoading(previous: State?)
+  case isLoading(previous: Value?)
   
   /// Item has successfully loaded.
-  case loaded(State)
+  case loaded(Value)
   
   /// Item failed to load.
   case failed(Failure)
   
   /// The current value of the item, if it has been previously loaded.
-  public var rawValue: State? {
+  public var rawValue: Value? {
     get {
       switch self {
       case let .loaded(value):
@@ -45,13 +45,13 @@ public enum Loadable<State, Failure: Error> {
     }
   }
   
-  public subscript<A>(dynamicMember keyPath: KeyPath<State, A>) -> A? {
+  public subscript<A>(dynamicMember keyPath: KeyPath<Value, A>) -> A? {
     self.rawValue?[keyPath: keyPath]
   }
 }
 
-extension Loadable: Equatable where State: Equatable, Failure: Equatable {
-  public static func == (lhs: Loadable<State, Failure>, rhs: Loadable<State, Failure>) -> Bool {
+extension Loadable: Equatable where Value: Equatable, Failure: Equatable {
+  public static func == (lhs: Loadable<Value, Failure>, rhs: Loadable<Value, Failure>) -> Bool {
     switch (lhs, rhs) {
     case (.notRequested, .notRequested):
       return true

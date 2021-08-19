@@ -39,7 +39,7 @@ public enum LoadablePickerAction<Element: Identifiable, Failure: Error> where El
   case binding(BindingAction<LoadablePickerState<Element, Failure>>)
   
   /// Load actions.
-  case load(LoadableAction<[Element], Failure>)
+  case loadable(LoadableAction<[Element], Failure>)
 }
 extension LoadablePickerAction: Equatable where Failure: Equatable { }
 
@@ -47,7 +47,8 @@ extension Reducer {
   
   /// Enhances a reducer with loadable picker actions.
   ///
-  /// When using this overload, the caller is responsible for implementing / calling the `load(.load)` action with the appropriate request type.
+  /// When using this overload, the caller is responsible for implementing / calling the `loadable(.load)` action with the appropriate request type.
+  /// However it handles setting the state appropriately on the loadable value.
   ///
   /// - Parameters:
   ///   - state: The loadable picker state.
@@ -60,7 +61,7 @@ extension Reducer {
       Reducer<LoadablePickerState<Element, Failure>, LoadablePickerAction<Element, Failure>, Void>
         .empty
         .binding(action: /LoadablePickerAction.binding)
-        .loadable(state: \.loadable, action: /LoadablePickerAction.load)
+        .loadable(state: \.loadable, action: /LoadablePickerAction.loadable)
         .pullback(state: state, action: action, environment: { _ in }),
       self
     )
@@ -84,33 +85,7 @@ extension Reducer {
         LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>
       >.empty
         .binding(action: /LoadablePickerAction.binding)
-        .loadable(state: \.loadable, action: /LoadablePickerAction.load, environment: { $0 })
-        .pullback(state: state, action: action, environment: environment),
-      self
-    )
-  }
-  
-  /// Enhances a reducer with loadable picker actions.
-  ///
-  /// When using this overload, the caller is responsible for implementing / calling the `load(.load)` action with the appropriate request type.
-  ///
-  /// - Parameters:
-  ///   - state: The loadable picker state.
-  ///   - action: The loadable picker action.
-  ///   - environment: The loadable picker environment.
-  public func loadablePicker<Element: Identifiable, Failure: Error, Request>(
-    state: WritableKeyPath<State, LoadablePickerState<Element, Failure>>,
-    action: CasePath<Action, LoadablePickerAction<Element, Failure>>,
-    environment: @escaping (Environment) -> LoadableListViewEnvironment<Element, Request, Failure>
-  ) -> Reducer where Element: Equatable, Failure: Equatable {
-    .combine(
-      Reducer<
-        LoadablePickerState<Element, Failure>,
-        LoadablePickerAction<Element, Failure>,
-        LoadableListViewEnvironment<Element, Request, Failure>
-      >.empty
-        .binding(action: /LoadablePickerAction.binding)
-        .loadable(state: \.loadable, action: /LoadablePickerAction.load, environment: { $0 })
+        .loadable(state: \.loadable, action: /LoadablePickerAction.loadable, environment: { $0 })
         .pullback(state: state, action: action, environment: environment),
       self
     )
@@ -233,7 +208,7 @@ public struct LoadablePicker<
       LoadableView(
         store: store.scope(state: \.loadable),
         autoLoad: autoLoad,
-        onLoad: .load(.load)
+        onLoad: .loadable(.load)
       ) { loadedStore in
         WithViewStore(loadedStore) { loadedViewStore in
           Picker(

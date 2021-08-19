@@ -42,13 +42,13 @@ final class LoadablePickerTests: XCTestCase {
       reducer: reducer,
       environment: ()
     )
-    store.send(.load(.load)) {
+    store.send(.loadable(.load)) {
       $0.loadable = .isLoading(previous: nil)
     }
-    store.send(.load(.loadingCompleted(.success(.users)))) {
+    store.send(.loadable(.loadingCompleted(.success(.users)))) {
       $0.loadable = .loaded(.users)
     }
-    store.send(.load(.loadingCompleted(.failure(.loadingFailed)))) {
+    store.send(.loadable(.loadingCompleted(.failure(.loadingFailed)))) {
       $0.loadable = .failed(.loadingFailed)
     }
     store.send(.binding(.set(\.selection, User.blob.id))) {
