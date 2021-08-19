@@ -45,7 +45,7 @@ import ComposableArchitecture
 /// }
 ///
 /// struct MyLoadableNumberView: View {
-///   let store: Store<LoadableState<Int, EmptyLoadRequest>, LoadableAction<Int>>
+///   let store: Store<Loadable<Int, AppError>, LoadableAction<Int, AppError>>
 ///
 ///   var body: some View {
 ///     LoadableView(store: store, autoLoad: true) { store in

@@ -13,6 +13,7 @@ let package = Package(
   products: [
     .library(name: "EditMode", targets: ["EditModeModifier"]),
     .library(name: "EditModeShim", targets: ["EditModeShim"]),
+    .library(name: "LoadableForEachStore", targets: ["LoadableForEachStore"]),
     .library(name: "LoadableList", targets: ["LoadableList"]),
     .library(name: "LoadablePicker", targets: ["LoadablePicker"]),
     .library(name: "LoadableView", targets: ["LoadableView"]),
@@ -33,6 +34,14 @@ let package = Package(
     .target(
       name: "EditModeShim",
       dependencies: []
+    ),
+    .target(
+      name: "LoadableForEachStore",
+      dependencies: [
+        "LoadableList",
+        "PreviewSupport",
+        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+      ]
     ),
     .target(
       name: "LoadableList",
@@ -72,7 +81,9 @@ let package = Package(
     ),
     .target(
       name: "PreviewSupport",
-      dependencies: []
+      dependencies: [
+        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+      ]
     ),
     .testTarget(
       name: "TCALoadableTests",
