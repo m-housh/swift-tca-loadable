@@ -1,7 +1,8 @@
 import ComposableArchitecture
-@_exported import struct LoadableList.LoadableListViewEnvironment
-@_exported import struct LoadableList.LoadableListViewEnvironmentFor
+@_exported import struct LoadableList.LoadableListEnvironment
+@_exported import struct LoadableList.LoadableListEnvironmentFor
 @_exported import LoadableView
+@_exported import ListAction
 import SwiftUI
 
 // MARK: - State
@@ -82,13 +83,13 @@ extension Reducer {
   public func loadablePicker<Element, Id: Hashable, Failure: Error>(
     state: WritableKeyPath<State, LoadablePickerState<Element, Id, Failure>>,
     action: CasePath<Action, LoadablePickerAction<Element, Id, Failure>>,
-    environment: @escaping (Environment) -> LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>
+    environment: @escaping (Environment) -> LoadableListEnvironment<Element, EmptyLoadRequest, Failure>
   ) -> Reducer {
     .combine(
       Reducer<
         LoadablePickerState<Element, Id, Failure>,
         LoadablePickerAction<Element, Id, Failure>,
-        LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>
+        LoadableListEnvironment<Element, EmptyLoadRequest, Failure>
       >.empty
         .binding(action: /LoadablePickerAction.binding)
         .loadable(state: \.loadable, action: /LoadablePickerAction.loadable, environment: { $0 })
@@ -336,7 +337,7 @@ extension LoadablePicker {
   let userPickerReducer = Reducer<
     LoadablePickerStateFor<User, LoadError>,
     LoadablePickerActionFor<User, LoadError>,
-    LoadableListViewEnvironmentFor<User, LoadError>
+    LoadableListEnvironmentFor<User, LoadError>
   >.empty
     .loadablePicker(
       state: \.self,

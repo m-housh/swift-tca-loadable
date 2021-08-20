@@ -148,7 +148,7 @@ struct TestUserLoadRequest {
   var name: String?
 }
 
-extension LoadableListViewEnvironment where Element == User, LoadRequest == TestUserLoadRequest, Failure == LoadError {
+extension LoadableListEnvironment where Element == User, LoadRequest == TestUserLoadRequest, Failure == LoadError {
   static func testWithCustomRequest(scheduler: AnySchedulerOf<DispatchQueue>) -> Self {
     .init(
       load: { request in
@@ -175,7 +175,7 @@ struct UserStateWithCustomRequesState: Equatable {
 let userReducerWithCustomRequest = Reducer<
   UserStateWithCustomRequesState,
   LoadableListViewAction<User, LoadError>,
-  LoadableListViewEnvironment<User, TestUserLoadRequest, LoadError>
+  LoadableListEnvironment<User, TestUserLoadRequest, LoadError>
 > { state, action, environment in
   switch action {
   case .editMode:
@@ -197,7 +197,7 @@ let userReducerWithCustomRequest = Reducer<
 //  environment: { $0 }
 )
 
-extension LoadableListViewEnvironment where Element == User, LoadRequest == EmptyLoadRequest, Failure == LoadError {
+extension LoadableListEnvironment where Element == User, LoadRequest == EmptyLoadRequest, Failure == LoadError {
   
   public static func test(scheduler: AnySchedulerOf<DispatchQueue>) -> Self {
     

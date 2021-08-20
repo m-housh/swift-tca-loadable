@@ -1,7 +1,10 @@
 import ComposableArchitecture
 @_exported import EditModeModifier
-@_exported import LoadableList
-@_exported import LoadableView
+@_exported import struct LoadableList.LoadableListEnvironment
+@_exported import ListAction
+@_exported import enum LoadableView.LoadableAction
+@_exported import enum LoadableView.Loadable
+import LoadableView
 import SwiftUI
 import IdentifiedCollections
 
@@ -32,6 +35,8 @@ public struct LoadableForEachStoreState<Element, Id: Hashable, Failure: Error> {
   }
 }
 extension LoadableForEachStoreState: Equatable where Element: Equatable, Failure: Equatable { }
+public typealias LoadableForEachStoreStateFor<Element, Failure: Error> = LoadableForEachStoreState<Element, Element.ID, Failure>
+where Element: Identifiable
 
 extension LoadableForEachStoreState where Element: Identifiable, Id == Element.ID {
   public init(
@@ -59,7 +64,8 @@ public enum LoadableForEachStoreAction<
   case element(id: Id, action: ElementAction)
 }
 extension LoadableForEachStoreAction: Equatable where Element: Equatable, ElementAction: Equatable, Failure: Equatable { }
-
+public typealias LoadableForEachStoreActionFor<Element, ElementAction, Failure: Error> = LoadableForEachStoreAction<Element, ElementAction, Element.ID, Failure>
+where Element: Identifiable
 
 // MARK: - View
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
@@ -122,6 +128,7 @@ public struct LoadableForEachStore<
   }
 }
 
+// MARK: - Identfiable Support
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 extension LoadableForEachStore where Element: Identifiable, Id == Element.ID {
   
@@ -133,8 +140,8 @@ extension LoadableForEachStore where Element: Identifiable, Id == Element.ID {
   ///   - row: The view builder for an individual row in the list.
   public init(
     store: Store<
-      LoadableForEachStoreState<Element, Element.ID, Failure>,
-      LoadableForEachStoreAction<Element, ElementAction, Element.ID, Failure>
+      LoadableForEachStoreStateFor<Element, Failure>,
+      LoadableForEachStoreActionFor<Element, ElementAction, Failure>
     >,
     autoLoad: Bool = true,
     @ViewBuilder row: @escaping (Store<Element, ElementAction>) -> Row
@@ -152,7 +159,7 @@ extension LoadableForEachStore where Element: Identifiable, Id == Element.ID {
   let previewReducer = Reducer<
     LoadableForEachStoreState<User, User.ID, LoadError>,
     LoadableForEachStoreAction<User, UserAction, User.ID, LoadError>,
-    LoadableListViewEnvironment<User, EmptyLoadRequest, LoadError>
+    LoadableListEnvironment<User, EmptyLoadRequest, LoadError>
   >.empty
     .loadableForEachStore(
       state: \.self,

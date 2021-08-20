@@ -124,6 +124,7 @@ public struct LoadableView<
   
   public var body: some View {
     SwitchStore(self.store) {
+      // Not Requested.
       CaseLet<
         Loadable<LoadedValue, Failure>,
         Action,
@@ -146,6 +147,7 @@ public struct LoadableView<
           )
         }
       )
+      // Loaded.
       CaseLet<
         Loadable<LoadedValue, Failure>,
         Action,
@@ -157,6 +159,7 @@ public struct LoadableView<
         action: { $0 },
         then: loadedView
       )
+      // Is loading.
       CaseLet<
         Loadable<LoadedValue, Failure>,
         Action,
@@ -168,6 +171,7 @@ public struct LoadableView<
         action: { $0 },
         then: isLoadingView
       )
+      // Failed
       CaseLet<
         Loadable<LoadedValue, Failure>,
         Action,
@@ -186,6 +190,10 @@ public struct LoadableView<
 // MARK: - View Overrides.
 extension LoadableView {
   
+  /// Replaces / overrides the `error` view.
+  ///
+  /// - Parameters:
+  ///   - view: The new error view.
   public func error<V: View>(
     view: @escaping (Store<Failure, Action>) -> V
   ) -> LoadableView<LoadedValue, Action, Failure, NotRequestedView, LoadedView, V, IsLoadingView> {
@@ -200,6 +208,10 @@ extension LoadableView {
     )
   }
   
+  /// Replaces / overrides the `isLoading`  view.
+  ///
+  /// - Parameters:
+  ///   - view: The new is loading view.
   public func isLoading<V: View>(
     view: @escaping (Store<LoadedValue?, Action>) -> V
   ) -> LoadableView<LoadedValue, Action, Failure, NotRequestedView, LoadedView, ErrorView, V> {
@@ -214,6 +226,10 @@ extension LoadableView {
     )
   }
   
+  /// Replaces / overrides the `loaded`  view.
+  ///
+  /// - Parameters:
+  ///   - view: The new loaded view.
   public func loaded<V: View>(
     view: @escaping (Store<LoadedValue, Action>) -> V
   ) -> LoadableView<LoadedValue, Action, Failure, NotRequestedView, V, ErrorView, IsLoadingView> {
@@ -228,6 +244,10 @@ extension LoadableView {
     )
   }
   
+  /// Replaces / overrides the `notRequested`  view.
+  ///
+  /// - Parameters:
+  ///   - view: The new not requested view.
   public func notRequested<V: View>(
     view: @escaping (Store<Void, Action>) -> V
   ) -> LoadableView<LoadedValue, Action, Failure, V, LoadedView, ErrorView, IsLoadingView> {
@@ -243,26 +263,6 @@ extension LoadableView {
   }
 }
 
-
-extension LoadableView where Action == LoadableAction<LoadedValue, Failure> {
-  public init(
-    store: Store<Loadable<LoadedValue, Failure>, Action>,
-    autoLoad: Bool = true,
-    @ViewBuilder loadedView: @escaping (Store<LoadedValue, Action>) -> LoadedView,
-    @ViewBuilder notRequestedView: @escaping (Store<Void, Action>) -> NotRequestedView,
-    @ViewBuilder isLoadingView: @escaping (Store<LoadedValue?, Action>) -> IsLoadingView,
-    @ViewBuilder errorView: @escaping (Store<Failure, Action>) -> ErrorView
-  ) {
-    self.store = store
-    self.autoLoad = autoLoad
-    self.notRequestedView = notRequestedView
-    self.errorView = errorView
-    self.isLoadingView = isLoadingView
-    self.loadedView = loadedView
-    self.loadAction = .load
-  }
-}
-
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 extension LoadableView where
 Failure: Equatable,
@@ -274,6 +274,13 @@ IsLoadingView == SwitchStore<LoadedValue?, Action, WithViewStore<LoadedValue?, A
 >,
 ErrorView == WithViewStore<Failure, Action, VStack<TupleView<(Text, Button<Text>)>>>
 {
+  /// Create a loadable view with defaults for all the states, except for `loaded`.
+  ///
+  /// - parameters:
+  ///    - store: The store to derive our state and actions from.
+  ///    - autoLoad: A flag for if we automatically send a load action if our state is `.notRequested`
+  ///    - loadAction: The action that loads our value.
+  ///    - loadedView: The view shown if our state is `.loaded`
   public init(
     store: Store<Loadable<LoadedValue, Failure>, Action>,
     autoLoad: Bool = true,
@@ -344,6 +351,13 @@ IsLoadingView == SwitchStore<LoadedValue?, Action, WithViewStore<LoadedValue?, A
 >,
 ErrorView == WithViewStore<Failure, Action, VStack<TupleView<(Text, Button<Text>)>>>
 {
+  
+  /// Create a loadable view with defaults for all the states, except for `loaded`.
+  ///
+  /// - parameters:
+  ///     - store: The store to derive our state and actions from.
+  ///     - autoLoad: A flag for if we automatically send a load action if our state is `.notRequested`
+  ///     - loadedView: The view shown if our state is `.loaded`
   public init(
     store: Store<Loadable<LoadedValue, Failure>, Action>,
     autoLoad: Bool = true,

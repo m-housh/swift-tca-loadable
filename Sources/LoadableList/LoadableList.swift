@@ -1,17 +1,18 @@
 import ComposableArchitecture
 @_exported import EditModeModifier
 @_exported import LoadableView
+@_exported import ListAction
 import SwiftUI
 
-/// Represents the environment for a loadable list view.
-public struct LoadableListViewEnvironment<Element, LoadRequest, Failure: Error> {
-  
+/// Represents the environment for a loadable list.
+public struct LoadableListEnvironment<Element, LoadRequest, Failure: Error> {
+
   /// Load the items.
   public var load: (LoadRequest) -> Effect<[Element], Failure>
-  
+
   /// The main dispatch queue.
   public var mainQueue: AnySchedulerOf<DispatchQueue>
-  
+
   /// Create a new environment.
   ///
   /// - Parameters:
@@ -25,12 +26,12 @@ public struct LoadableListViewEnvironment<Element, LoadRequest, Failure: Error> 
     self.mainQueue = mainQueue
   }
 }
-extension LoadableListViewEnvironment: LoadableEnvironmentRepresentable { }
-public typealias LoadableListViewEnvironmentFor<Element, Failure: Error> = LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>
+extension LoadableListEnvironment: LoadableEnvironmentRepresentable { }
+public typealias LoadableListEnvironmentFor<Element, Failure: Error> = LoadableListEnvironment<Element, EmptyLoadRequest, Failure>
 
 #if DEBUG
-extension LoadableListViewEnvironment {
-  public static var failing: LoadableListViewEnvironment {
+extension LoadableListEnvironment {
+  public static var failing: Self {
     .init(
       load: { _ in .failing("\(Self.self).load is unimplemented") },
       mainQueue: .failing("\(Self.self).mainQueue is unimplemented")
@@ -39,8 +40,8 @@ extension LoadableListViewEnvironment {
 }
 #endif
 
-extension LoadableListViewEnvironment {
-  public static var noop: LoadableListViewEnvironment {
+extension LoadableListEnvironment {
+  public static var noop: Self {
     .init(
       load: { _ in .none },
       mainQueue: .main
@@ -77,16 +78,6 @@ public typealias LoadableListViewStateFor = LoadableListViewState
 
 // MARK: - Action
 
-/// Represents common actions that can be taken on lists.
-public enum ListAction: Equatable {
-  
-  /// Delete rows from the list.
-  case delete(IndexSet)
-  
-  /// Move rows in the list.
-  case move(IndexSet, Int)
-}
-
 /// Represents the actions that can be taken on a loadable list view.
 public enum LoadableListViewAction<Element, Failure: Error> {
   case editMode(EditModeAction)
@@ -98,51 +89,6 @@ public typealias LoadableListViewActionFor = LoadableListViewAction
 
 extension Reducer {
   
-  // TODO: This should be generic of Collection.
-  /// Enhances a reducer with list actions.
-  ///
-  /// - Parameters:
-  ///   - state: The list state.
-  ///   - action: The list actions.
-  public func list<Element>(
-    state: WritableKeyPath<State, [Element]>,
-    action: CasePath<Action, ListAction>
-  ) -> Reducer {
-    .combine(
-      Reducer<[Element], ListAction, Void> { state, action, _ in
-        switch action {
-        case let .delete(indexSet):
-          state.remove(atOffsets: indexSet)
-          return .none
-          
-        case let .move(source, destination):
-          state.move(fromOffsets: source, toOffset: destination)
-          return .none
-        }
-      }
-        .pullback(state: state, action: action, environment: { _ in }),
-      self
-    )
-  }
-  
-  // TODO: This should be generic of Collection.
-  /// Enhances a reducer with list actions for an optional list.
-  ///
-  /// - Parameters:
-  ///   - state: The list state.
-  ///   - action: The list actions.
-  public func list<Element>(
-    state: WritableKeyPath<State, [Element]?>,
-    action: CasePath<Action, ListAction>
-  ) -> Reducer {
-    .combine(
-      Reducer<[Element], ListAction, Void>.empty
-        .list(state: \.self, action: /ListAction.self)
-        .optional()
-        .pullback(state: state, action: action, environment: { _ in }),
-      self
-    )
-  }
   
   /// Enhances a reducer with loadable list actions.
   ///
@@ -157,19 +103,11 @@ extension Reducer {
     action: CasePath<Action, LoadableListViewAction<Element, Failure>>
   ) -> Reducer {
     .combine(
-      Reducer<LoadableListViewState<Element, Failure>, LoadableListViewAction<Element, Failure>, Void> { state, action, _ in
-        switch action {
-          
-        case .editMode:
-          return .none
-          
-        case .list:
-          return .none
-
-        case .loadable:
-          return .none
-        }
-      }
+      Reducer<
+        LoadableListViewState<Element, Failure>,
+        LoadableListViewAction<Element, Failure>,
+        Void
+      >.empty
         .editMode(state: \.editMode, action: /LoadableListViewAction.editMode)
         .list(state: \.loadable.rawValue, action: /LoadableListViewAction.list)
         .loadable(state: \.loadable, action: /LoadableListViewAction.loadable)
@@ -187,13 +125,13 @@ extension Reducer {
   public func loadableList<Element, Failure>(
     state: WritableKeyPath<State, LoadableListViewStateFor<Element, Failure>>,
     action: CasePath<Action, LoadableListViewActionFor<Element, Failure>>,
-    environment: @escaping (Environment) -> LoadableListViewEnvironmentFor<Element, Failure>
+    environment: @escaping (Environment) -> LoadableListEnvironmentFor<Element, Failure>
   ) -> Reducer where Failure: Equatable, Failure: Error {
     .combine(
       Reducer<
         LoadableListViewState<Element, Failure>,
         LoadableListViewAction<Element, Failure>,
-        LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>
+        LoadableListEnvironment<Element, EmptyLoadRequest, Failure>
       >.empty
         .loadableList(state: \.self, action: /LoadableListViewAction.self)
         .loadable(state: \.loadable, action: /LoadableListViewAction.loadable, environment: { $0 })
@@ -347,7 +285,7 @@ extension LoadableListView where Element: Identifiable, Id == Element.ID {
   import Combine
   import PreviewSupport
 
-  extension LoadableListViewEnvironment where Element == User, LoadRequest == EmptyLoadRequest, Failure == LoadError {
+  extension LoadableListEnvironment where Element == User, LoadRequest == EmptyLoadRequest, Failure == LoadError {
     public static let users = Self.init(
       load: { _ in
         Just([User].users)
@@ -362,11 +300,11 @@ extension LoadableListView where Element: Identifiable, Id == Element.ID {
   let usersReducer = Reducer<
     LoadableListViewStateFor<User, LoadError>,
     LoadableListViewActionFor<User, LoadError>,
-    LoadableListViewEnvironmentFor<User, LoadError>
+    LoadableListEnvironmentFor<User, LoadError>
   >.empty
     .loadableList(
       state: \.self,
-      action: /LoadableListViewActionFor<User, LoadError>.self,
+      action: /LoadableListViewActionFor.self,
       environment: { $0 }
     )
 

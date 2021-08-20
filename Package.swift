@@ -13,6 +13,7 @@ let package = Package(
   products: [
     .library(name: "EditMode", targets: ["EditModeModifier"]),
     .library(name: "EditModeShim", targets: ["EditModeShim"]),
+    .library(name: "ListAction", targets: ["ListAction"]),
     .library(name: "LoadableForEachStore", targets: ["LoadableForEachStore"]),
     .library(name: "LoadableList", targets: ["LoadableList"]),
     .library(name: "LoadablePicker", targets: ["LoadablePicker"]),
@@ -36,6 +37,12 @@ let package = Package(
       dependencies: []
     ),
     .target(
+      name: "ListAction",
+      dependencies: [
+        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+      ]
+    ),
+    .target(
       name: "LoadableForEachStore",
       dependencies: [
         "LoadableList",
@@ -46,8 +53,9 @@ let package = Package(
     .target(
       name: "LoadableList",
       dependencies: [
-        "LoadableView",
         "EditModeModifier",
+        "ListAction",
+        "LoadableView",
         "PreviewSupport",
         .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
       ]

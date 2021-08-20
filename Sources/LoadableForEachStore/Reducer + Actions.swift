@@ -1,47 +1,10 @@
 import ComposableArchitecture
-
-// MARK: - IdentifiedArray ListAction
-extension Reducer {
-  // TODO: These should be generic of Collections in `LoadableList`.
-  public func list<Element, Id: Hashable>(
-    state: WritableKeyPath<State, IdentifiedArray<Id, Element>>,
-    action: CasePath<Action, ListAction>
-  ) -> Reducer {
-    .combine(
-      Reducer<IdentifiedArray<Id, Element>, ListAction, Void> { state, action, _ in
-        switch action {
-        case let .delete(indexSet):
-          state.remove(atOffsets: indexSet)
-          return .none
-          
-        case let .move(source, destination):
-          state.move(fromOffsets: source, toOffset: destination)
-          return .none
-        }
-      }
-        .pullback(state: state, action: action, environment: { _ in }),
-      self
-    )
-  }
-  
-  public func list<Element, Id: Hashable>(
-    state: WritableKeyPath<State, IdentifiedArray<Id, Element>?>,
-    action: CasePath<Action, ListAction>
-  ) -> Reducer {
-    .combine(
-      Reducer<IdentifiedArray<Id, Element>, ListAction, Void>
-        .empty
-        .list(state: \.self, action: /ListAction.self)
-        .optional()
-        .pullback(state: state, action: action, environment: { _ in }),
-      self
-    )
-  }
-}
+import LoadableView
+@_exported import typealias LoadableList.LoadableListEnvironmentFor
+@_exported import ListAction
 
 // MARK: - ForEach
 extension Reducer {
-  // These cause crashes for some reason in previews, but work in an application.
   public func forEach<
    Element,
    ElementAction,
@@ -86,7 +49,7 @@ fileprivate struct LoadableForEachEnvironment<Element, Id: Hashable, LoadRequest
   var mainQueue: AnySchedulerOf<DispatchQueue>
   
   init(
-    listEnv: LoadableListViewEnvironment<Element, LoadRequest, Failure>,
+    listEnv: LoadableListEnvironment<Element, LoadRequest, Failure>,
     id: KeyPath<Element, Id>
   ) {
     self.load = { request in
@@ -134,7 +97,7 @@ extension Reducer {
     id: KeyPath<Element, Id>,
     state: WritableKeyPath<State, LoadableForEachStoreState<Element, Id, Failure>>,
     action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Id, Failure>>,
-    environment: @escaping (Environment) -> LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>
+    environment: @escaping (Environment) -> LoadableListEnvironment<Element, EmptyLoadRequest, Failure>
   ) -> Reducer {
     .combine(
       Reducer<
@@ -161,7 +124,7 @@ extension Reducer {
     id: KeyPath<Element, Id>,
     state: WritableKeyPath<State, LoadableForEachStoreState<Element, Id, Failure>>,
     action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Id, Failure>>,
-    environment: @escaping (Environment) -> LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>,
+    environment: @escaping (Environment) -> LoadableListEnvironment<Element, EmptyLoadRequest, Failure>,
     forEach elementReducer: Reducer<Element, ElementAction, ElementEnvironment>,
     elementEnvironment: @escaping (Environment) -> ElementEnvironment
   ) -> Reducer {
@@ -189,7 +152,7 @@ extension Reducer {
     id: KeyPath<Element, Id>,
     state: WritableKeyPath<State, LoadableForEachStoreState<Element, Id, Failure>>,
     action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Id, Failure>>,
-    environment: @escaping (Environment) -> LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>,
+    environment: @escaping (Environment) -> LoadableListEnvironment<Element, EmptyLoadRequest, Failure>,
     forEach elementReducer: Reducer<Element, ElementAction, Void>
   ) -> Reducer {
     loadableForEachStore(
@@ -215,7 +178,7 @@ extension Reducer {
   >(
     state: WritableKeyPath<State, LoadableForEachStoreState<Element, Element.ID, Failure>>,
     action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Element.ID, Failure>>,
-    environment: @escaping (Environment) -> LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>,
+    environment: @escaping (Environment) -> LoadableListEnvironment<Element, EmptyLoadRequest, Failure>,
     forEach elementReducer: Reducer<Element, ElementAction, ElementEnvironment>,
     elementEnvironment: @escaping (Environment) -> ElementEnvironment
   ) -> Reducer {
@@ -237,7 +200,7 @@ extension Reducer {
   >(
     state: WritableKeyPath<State, LoadableForEachStoreState<Element, Element.ID, Failure>>,
     action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Element.ID, Failure>>,
-    environment: @escaping (Environment) -> LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>,
+    environment: @escaping (Environment) -> LoadableListEnvironmentFor<Element, Failure>,
     forEach elementReducer: Reducer<Element, ElementAction, Void>
   ) -> Reducer {
     loadableForEachStore(
@@ -255,9 +218,9 @@ extension Reducer {
     ElementAction,
     Failure: Error
   >(
-    state: WritableKeyPath<State, LoadableForEachStoreState<Element, Element.ID, Failure>>,
-    action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Element.ID, Failure>>,
-    environment: @escaping (Environment) -> LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>
+    state: WritableKeyPath<State, LoadableForEachStoreStateFor<Element, Failure>>,
+    action: CasePath<Action, LoadableForEachStoreActionFor<Element, ElementAction, Failure>>,
+    environment: @escaping (Environment) -> LoadableListEnvironmentFor<Element, Failure>
   ) -> Reducer {
     loadableForEachStore(
       id: \.id,
