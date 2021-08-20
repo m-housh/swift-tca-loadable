@@ -336,7 +336,7 @@ extension LoadablePicker {
   let userPickerReducer = Reducer<
     LoadablePickerStateFor<User, LoadError>,
     LoadablePickerActionFor<User, LoadError>,
-    LoadableListViewEnvironmentFor<User, EmptyLoadRequest, LoadError>
+    LoadableListViewEnvironmentFor<User, LoadError>
   >.empty
     .loadablePicker(
       state: \.self,

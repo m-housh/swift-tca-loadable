@@ -26,7 +26,7 @@ public struct LoadableListViewEnvironment<Element, LoadRequest, Failure: Error> 
   }
 }
 extension LoadableListViewEnvironment: LoadableEnvironmentRepresentable { }
-public typealias LoadableListViewEnvironmentFor = LoadableListViewEnvironment
+public typealias LoadableListViewEnvironmentFor<Element, Failure: Error> = LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>
 
 #if DEBUG
 extension LoadableListViewEnvironment {
@@ -187,7 +187,7 @@ extension Reducer {
   public func loadableList<Element, Failure>(
     state: WritableKeyPath<State, LoadableListViewStateFor<Element, Failure>>,
     action: CasePath<Action, LoadableListViewActionFor<Element, Failure>>,
-    environment: @escaping (Environment) -> LoadableListViewEnvironmentFor<Element, EmptyLoadRequest, Failure>
+    environment: @escaping (Environment) -> LoadableListViewEnvironmentFor<Element, Failure>
   ) -> Reducer where Failure: Equatable, Failure: Error {
     .combine(
       Reducer<
@@ -362,7 +362,7 @@ extension LoadableListView where Element: Identifiable, Id == Element.ID {
   let usersReducer = Reducer<
     LoadableListViewStateFor<User, LoadError>,
     LoadableListViewActionFor<User, LoadError>,
-    LoadableListViewEnvironmentFor<User, EmptyLoadRequest, LoadError>
+    LoadableListViewEnvironmentFor<User, LoadError>
   >.empty
     .loadableList(
       state: \.self,
