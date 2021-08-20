@@ -1,18 +1,82 @@
 import ComposableArchitecture
-@_exported import EditModeModifier
-@_exported import struct LoadableList.LoadableListEnvironment
-@_exported import ListAction
-@_exported import enum LoadableView.LoadableAction
-@_exported import enum LoadableView.Loadable
 import LoadableView
+import LoadableList
 import SwiftUI
 import IdentifiedCollections
 
-// MARK: State
-public struct LoadableForEachStoreState<Element, Id: Hashable, Failure: Error> {
+// MARK: Environment
+
+/// Represents the environment for a `LoadableForEach` view.
+public struct LoadableForEachEnvironment<Element, Id: Hashable, LoadRequest, Failure: Error> {
   
+  /// Load the elements.
+  public var load: (LoadRequest) -> Effect<IdentifiedArray<Id, Element>, Failure>
+  
+  /// The main dispatch queue.
+  public var mainQueue: AnySchedulerOf<DispatchQueue>
+  
+  /// Create a new environment.
+  ///
+  /// - Parameters:
+  ///   - load: Load the elements.
+  ///   - mainQueue: The main dispatch queue.
+  public init(
+    load: @escaping (LoadRequest) -> Effect<IdentifiedArray<Id, Element>, Failure>,
+    mainQueue: AnySchedulerOf<DispatchQueue>
+  ) {
+    self.load = load
+    self.mainQueue = mainQueue
+  }
+}
+extension LoadableForEachEnvironment: LoadableEnvironmentRepresentable { }
+
+/// A convenience for when the element is `Identifiable` and there is an `EmptyLoadRequest`.
+public typealias LoadableForEachEnvironmentFor<Element, Failure: Error> = LoadableForEachEnvironment<Element, Element.ID, EmptyLoadRequest, Failure>
+where Element: Identifiable
+
+extension LoadableForEachEnvironment {
+  
+  /// Wraps a `LoadableListEnvironment` and returns an `IdentifiedArray` to be used in for each stores.
+  ///
+  /// - Parameters:
+  ///   - id: The key path to the id of the element.
+  ///   - listEnvironment: The list environment to derive our `load` method from.
+  public init(
+    id: KeyPath<Element, Id>,
+    environment listEnvironment: LoadableListEnvironment<Element, LoadRequest, Failure>
+  ) {
+    self.init(
+      load: { request in
+        listEnvironment.load(request)
+          .map { IdentifiedArray.init(uniqueElements: $0, id: id) }
+      },
+      mainQueue: listEnvironment.mainQueue
+    )
+  }
+  
+  /// Wraps a `LoadableListEnvironment` and returns an `IdentifiedArray` to be used in for each stores, when the element is `Identifiable`.
+  ///
+  /// - Parameters:
+  ///   - listEnvironment: The list environment to derive our `load` method from.
+  public init(
+    environment listEnvironment: LoadableListEnvironment<Element, LoadRequest, Failure>
+  ) where Element: Identifiable, Id == Element.ID {
+    self.init(id: \.id, environment: listEnvironment)
+  }
+}
+
+// MARK: State
+
+/// Represents the state for a loadable for each view.
+public struct LoadableForEachState<Element, Id: Hashable, Failure: Error> {
+  
+  /// The edit mode of the view.
   public var editMode: EditMode
+  
+  /// The key path for an element's id.
   public var id: KeyPath<Element, Id>
+  
+  /// The loadable elements.
   public var loadable: Loadable<IdentifiedArray<Id, Element>, Failure>
   
   // allows the for each to work on reducers, could not find an easy way
@@ -24,6 +88,12 @@ public struct LoadableForEachStoreState<Element, Id: Hashable, Failure: Error> {
     set { loadable.rawValue = newValue }
   }
   
+  /// Create a new state.
+  ///
+  /// - Parameters:
+  ///   - editMode: The edit mode of the view.
+  ///   - id: The key path for an element's id.
+  ///   - loadable: The loadable elements..
   public init(
     editMode: EditMode = .inactive,
     id: KeyPath<Element, Id>,
@@ -34,11 +104,19 @@ public struct LoadableForEachStoreState<Element, Id: Hashable, Failure: Error> {
     self.loadable = loadable
   }
 }
-extension LoadableForEachStoreState: Equatable where Element: Equatable, Failure: Equatable { }
-public typealias LoadableForEachStoreStateFor<Element, Failure: Error> = LoadableForEachStoreState<Element, Element.ID, Failure>
+extension LoadableForEachState: Equatable where Element: Equatable, Failure: Equatable { }
+
+/// Convenience for when the element is `Identifiable`.
+public typealias LoadableForEachStateFor<Element, Failure: Error> = LoadableForEachState<Element, Element.ID, Failure>
 where Element: Identifiable
 
-extension LoadableForEachStoreState where Element: Identifiable, Id == Element.ID {
+extension LoadableForEachState where Element: Identifiable, Id == Element.ID {
+  
+  /// Convenience for when the element is `Identifiable`.
+  ///
+  /// - Parameters:
+  ///   - editMode: The edit mode of the view.
+  ///   - loadable: The loadable elements..
   public init(
     editMode: EditMode = .inactive,
     loadable: Loadable<IdentifiedArray<Element.ID, Element>, Failure> = .notRequested
@@ -52,20 +130,35 @@ extension LoadableForEachStoreState where Element: Identifiable, Id == Element.I
 }
 
 // MARK: - Action
-public enum LoadableForEachStoreAction<
+
+/// Represents the actions taken on a loadable for each view.
+public enum LoadableForEachAction<
   Element,
   ElementAction,
   Id: Hashable,
   Failure: Error
 > {
+  
+  /// The edit mode actions.
   case editMode(EditModeAction)
+  
+  /// The list actions.
   case list(ListAction)
+  
+  /// The loadable element actions.
   case loadable(LoadableAction<IdentifiedArray<Id, Element>, Failure>)
+  
+  /// The for each actions for an individual element.
   case element(id: Id, action: ElementAction)
 }
-extension LoadableForEachStoreAction: Equatable where Element: Equatable, ElementAction: Equatable, Failure: Equatable { }
-public typealias LoadableForEachStoreActionFor<Element, ElementAction, Failure: Error> = LoadableForEachStoreAction<Element, ElementAction, Element.ID, Failure>
-where Element: Identifiable
+extension LoadableForEachAction: Equatable where Element: Equatable, ElementAction: Equatable, Failure: Equatable { }
+
+/// Convenience for when the element is `Identifiable`.
+public typealias LoadableForEachStoreActionFor<
+  Element,
+  ElementAction,
+  Failure: Error
+> = LoadableForEachAction<Element, ElementAction, Element.ID, Failure> where Element: Identifiable
 
 // MARK: - View
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
@@ -78,8 +171,8 @@ public struct LoadableForEachStore<
 >: View where Failure: Equatable {
   
   public let store: Store<
-    LoadableForEachStoreState<Element, Id, Failure>,
-    LoadableForEachStoreAction<Element, ElementAction, Id, Failure>
+    LoadableForEachState<Element, Id, Failure>,
+    LoadableForEachAction<Element, ElementAction, Id, Failure>
   >
   let autoLoad: Bool
   let row: (Store<Element, ElementAction>) -> Row
@@ -92,8 +185,8 @@ public struct LoadableForEachStore<
   ///   - row: The view builder for an individual row in the list.
   public init(
     store: Store<
-      LoadableForEachStoreState<Element, Id, Failure>,
-      LoadableForEachStoreAction<Element, ElementAction, Id, Failure>
+      LoadableForEachState<Element, Id, Failure>,
+      LoadableForEachAction<Element, ElementAction, Id, Failure>
     >,
     autoLoad: Bool = true,
     @ViewBuilder row: @escaping (Store<Element, ElementAction>) -> Row
@@ -113,7 +206,7 @@ public struct LoadableForEachStore<
         WithViewStore(store) { loadedViewStore in
           List {
             ForEachStore(
-              store.scope(state: { $0 }, action: LoadableForEachStoreAction.element(id:action:)),
+              store.scope(state: { $0 }, action: LoadableForEachAction.element(id:action:)),
               content: row
             )
             .onDelete { loadedViewStore.send(.list(.delete($0))) }
@@ -122,7 +215,7 @@ public struct LoadableForEachStore<
         }
       }
       .editMode(
-        store.scope(state: \.editMode, action: LoadableForEachStoreAction.editMode)
+        store.scope(state: \.editMode, action: LoadableForEachAction.editMode)
       )
     }
   }
@@ -140,8 +233,8 @@ extension LoadableForEachStore where Element: Identifiable, Id == Element.ID {
   ///   - row: The view builder for an individual row in the list.
   public init(
     store: Store<
-      LoadableForEachStoreStateFor<Element, Failure>,
-      LoadableForEachStoreActionFor<Element, ElementAction, Failure>
+      LoadableForEachState<Element, Element.ID, Failure>,
+      LoadableForEachAction<Element, ElementAction, Element.ID, Failure>
     >,
     autoLoad: Bool = true,
     @ViewBuilder row: @escaping (Store<Element, ElementAction>) -> Row
@@ -157,13 +250,13 @@ extension LoadableForEachStore where Element: Identifiable, Id == Element.ID {
   import PreviewSupport
 
   let previewReducer = Reducer<
-    LoadableForEachStoreState<User, User.ID, LoadError>,
-    LoadableForEachStoreAction<User, UserAction, User.ID, LoadError>,
-    LoadableListEnvironment<User, EmptyLoadRequest, LoadError>
+    LoadableForEachStateFor<User, LoadError>,
+    LoadableForEachStoreActionFor<User, UserAction, LoadError>,
+    LoadableForEachEnvironmentFor<User, LoadError>
   >.empty
     .loadableForEachStore(
       state: \.self,
-      action: /LoadableForEachStoreAction.self,
+      action: /LoadableForEachAction.self,
       environment: { $0 },
       forEach: userReducer
     )
@@ -175,7 +268,7 @@ extension LoadableForEachStore where Element: Identifiable, Id == Element.ID {
         store: .init(
           initialState: .init(),
           reducer: previewReducer,
-          environment: .users
+          environment: .init(environment: .users)
         ),
         autoLoad: true
       ) { store in

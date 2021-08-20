@@ -14,8 +14,8 @@ extension Reducer {
   >(
     elementReducer: Reducer<Element, ElementAction, ElementEnvironment>,
     environment: @escaping (Environment) -> ElementEnvironment
-  ) -> Reducer where State == LoadableForEachStoreState<Element, Id, Failure>,
-                     Action == LoadableForEachStoreAction<Element, ElementAction, Id, Failure>
+  ) -> Reducer where State == LoadableForEachState<Element, Id, Failure>,
+                     Action == LoadableForEachAction<Element, ElementAction, Id, Failure>
   {
     combined(with:
       elementReducer.forEach(
@@ -33,33 +33,14 @@ extension Reducer {
    Failure: Error
   >(
     elementReducer: Reducer<Element, ElementAction, Void>
-  ) -> Reducer where State == LoadableForEachStoreState<Element, Id, Failure>,
-                     Action == LoadableForEachStoreAction<Element, ElementAction, Id, Failure>
+  ) -> Reducer where State == LoadableForEachState<Element, Id, Failure>,
+                     Action == LoadableForEachAction<Element, ElementAction, Id, Failure>
   {
     forEach(elementReducer: elementReducer, environment: { _ in })
   }
 }
 
 // MARK: - LoadableForEachStore
-
-// A wrapper around a list environment, converting the loaded list into an IdentifiedArray.
-fileprivate struct LoadableForEachEnvironment<Element, Id: Hashable, LoadRequest, Failure: Error> {
-  
-  var load: (LoadRequest) -> Effect<IdentifiedArray<Id, Element>, Failure>
-  var mainQueue: AnySchedulerOf<DispatchQueue>
-  
-  init(
-    listEnv: LoadableListEnvironment<Element, LoadRequest, Failure>,
-    id: KeyPath<Element, Id>
-  ) {
-    self.load = { request in
-      listEnv.load(request)
-        .map { IdentifiedArray.init(uniqueElements: $0, id: id) }
-    }
-    self.mainQueue = listEnv.mainQueue
-  }
-}
-extension LoadableForEachEnvironment: LoadableEnvironmentRepresentable { }
 
 extension Reducer {
   
@@ -70,18 +51,18 @@ extension Reducer {
     Id: Hashable,
     Failure: Error
   >(
-    state: WritableKeyPath<State, LoadableForEachStoreState<Element, Id, Failure>>,
-    action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Id, Failure>>
+    state: WritableKeyPath<State, LoadableForEachState<Element, Id, Failure>>,
+    action: CasePath<Action, LoadableForEachAction<Element, ElementAction, Id, Failure>>
   ) -> Reducer {
     .combine(
       Reducer<
-        LoadableForEachStoreState<Element, Id, Failure>,
-        LoadableForEachStoreAction<Element, ElementAction, Id, Failure>,
+        LoadableForEachState<Element, Id, Failure>,
+        LoadableForEachAction<Element, ElementAction, Id, Failure>,
         Void
       >.empty
-        .editMode(state: \.editMode, action: /LoadableForEachStoreAction.editMode)
-        .list(state: \.loadable.rawValue, action: /LoadableForEachStoreAction.list)
-        .loadable(state: \.loadable, action: /LoadableForEachStoreAction.loadable)
+        .editMode(state: \.editMode, action: /LoadableForEachAction.editMode)
+        .list(state: \.loadable.rawValue, action: /LoadableForEachAction.list)
+        .loadable(state: \.loadable, action: /LoadableForEachAction.loadable)
         .pullback(state: state, action: action, environment: { _ in }),
       self
     )
@@ -95,20 +76,20 @@ extension Reducer {
     Failure: Error
   >(
     id: KeyPath<Element, Id>,
-    state: WritableKeyPath<State, LoadableForEachStoreState<Element, Id, Failure>>,
-    action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Id, Failure>>,
-    environment: @escaping (Environment) -> LoadableListEnvironment<Element, EmptyLoadRequest, Failure>
+    state: WritableKeyPath<State, LoadableForEachState<Element, Id, Failure>>,
+    action: CasePath<Action, LoadableForEachAction<Element, ElementAction, Id, Failure>>,
+    environment: @escaping (Environment) -> LoadableForEachEnvironment<Element, Id, EmptyLoadRequest, Failure>
   ) -> Reducer {
     .combine(
       Reducer<
-        LoadableForEachStoreState<Element, Id, Failure>,
-        LoadableForEachStoreAction<Element, ElementAction, Id, Failure>,
+        LoadableForEachState<Element, Id, Failure>,
+        LoadableForEachAction<Element, ElementAction, Id, Failure>,
         LoadableForEachEnvironment<Element, Id, EmptyLoadRequest, Failure>
       >.empty
-        .editMode(state: \.editMode, action: /LoadableForEachStoreAction.editMode)
-        .list(state: \.loadable.rawValue, action: /LoadableForEachStoreAction.list)
-        .loadable(state: \.loadable, action: /LoadableForEachStoreAction.loadable, environment: { $0 })
-        .pullback(state: state, action: action, environment: { LoadableForEachEnvironment(listEnv: environment($0), id: id) }),
+        .editMode(state: \.editMode, action: /LoadableForEachAction.editMode)
+        .list(state: \.loadable.rawValue, action: /LoadableForEachAction.list)
+        .loadable(state: \.loadable, action: /LoadableForEachAction.loadable, environment: { $0 })
+        .pullback(state: state, action: action, environment: environment),
       self
     )
   }
@@ -122,17 +103,17 @@ extension Reducer {
     Failure: Error
   >(
     id: KeyPath<Element, Id>,
-    state: WritableKeyPath<State, LoadableForEachStoreState<Element, Id, Failure>>,
-    action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Id, Failure>>,
-    environment: @escaping (Environment) -> LoadableListEnvironment<Element, EmptyLoadRequest, Failure>,
+    state: WritableKeyPath<State, LoadableForEachState<Element, Id, Failure>>,
+    action: CasePath<Action, LoadableForEachAction<Element, ElementAction, Id, Failure>>,
+    environment: @escaping (Environment) -> LoadableForEachEnvironment<Element, Id, EmptyLoadRequest, Failure>,
     forEach elementReducer: Reducer<Element, ElementAction, ElementEnvironment>,
     elementEnvironment: @escaping (Environment) -> ElementEnvironment
   ) -> Reducer {
     .combine(
       // Add the for each actions to the reducer.
       Reducer<
-        LoadableForEachStoreState<Element, Id, Failure>,
-        LoadableForEachStoreAction<Element, ElementAction, Id, Failure>,
+        LoadableForEachState<Element, Id, Failure>,
+        LoadableForEachAction<Element, ElementAction, Id, Failure>,
         Environment
       >.empty
         .forEach(elementReducer: elementReducer, environment: elementEnvironment)
@@ -150,9 +131,9 @@ extension Reducer {
     Failure: Error
   >(
     id: KeyPath<Element, Id>,
-    state: WritableKeyPath<State, LoadableForEachStoreState<Element, Id, Failure>>,
-    action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Id, Failure>>,
-    environment: @escaping (Environment) -> LoadableListEnvironment<Element, EmptyLoadRequest, Failure>,
+    state: WritableKeyPath<State, LoadableForEachState<Element, Id, Failure>>,
+    action: CasePath<Action, LoadableForEachAction<Element, ElementAction, Id, Failure>>,
+    environment: @escaping (Environment) -> LoadableForEachEnvironment<Element, Id, EmptyLoadRequest, Failure>,
     forEach elementReducer: Reducer<Element, ElementAction, Void>
   ) -> Reducer {
     loadableForEachStore(
@@ -176,9 +157,9 @@ extension Reducer {
     ElementEnvironment,
     Failure: Error
   >(
-    state: WritableKeyPath<State, LoadableForEachStoreState<Element, Element.ID, Failure>>,
-    action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Element.ID, Failure>>,
-    environment: @escaping (Environment) -> LoadableListEnvironment<Element, EmptyLoadRequest, Failure>,
+    state: WritableKeyPath<State, LoadableForEachStateFor<Element, Failure>>,
+    action: CasePath<Action, LoadableForEachStoreActionFor<Element, ElementAction, Failure>>,
+    environment: @escaping (Environment) -> LoadableForEachEnvironmentFor<Element, Failure>,
     forEach elementReducer: Reducer<Element, ElementAction, ElementEnvironment>,
     elementEnvironment: @escaping (Environment) -> ElementEnvironment
   ) -> Reducer {
@@ -198,9 +179,9 @@ extension Reducer {
     ElementAction,
     Failure: Error
   >(
-    state: WritableKeyPath<State, LoadableForEachStoreState<Element, Element.ID, Failure>>,
-    action: CasePath<Action, LoadableForEachStoreAction<Element, ElementAction, Element.ID, Failure>>,
-    environment: @escaping (Environment) -> LoadableListEnvironmentFor<Element, Failure>,
+    state: WritableKeyPath<State, LoadableForEachStateFor<Element, Failure>>,
+    action: CasePath<Action, LoadableForEachStoreActionFor<Element, ElementAction, Failure>>,
+    environment: @escaping (Environment) -> LoadableForEachEnvironmentFor<Element, Failure>,
     forEach elementReducer: Reducer<Element, ElementAction, Void>
   ) -> Reducer {
     loadableForEachStore(
@@ -218,9 +199,9 @@ extension Reducer {
     ElementAction,
     Failure: Error
   >(
-    state: WritableKeyPath<State, LoadableForEachStoreStateFor<Element, Failure>>,
+    state: WritableKeyPath<State, LoadableForEachStateFor<Element, Failure>>,
     action: CasePath<Action, LoadableForEachStoreActionFor<Element, ElementAction, Failure>>,
-    environment: @escaping (Environment) -> LoadableListEnvironmentFor<Element, Failure>
+    environment: @escaping (Environment) -> LoadableForEachEnvironmentFor<Element, Failure>
   ) -> Reducer {
     loadableForEachStore(
       id: \.id,

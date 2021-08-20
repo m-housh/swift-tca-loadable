@@ -42,20 +42,6 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "LoadableForEachStore"
-               BuildableName = "LoadableForEachStore"
-               BlueprintName = "LoadableForEachStore"
-               ReferencedContainer = "container:">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
                BlueprintIdentifier = "LoadableList"
                BuildableName = "LoadableList"
                BlueprintName = "LoadableList"
@@ -126,20 +112,6 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "LoadablePickerTests"
-               BuildableName = "LoadablePickerTests"
-               BlueprintName = "LoadablePickerTests"
-               ReferencedContainer = "container:">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "NO"
-            buildForArchiving = "NO"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
                BlueprintIdentifier = "TCALoadableTests"
                BuildableName = "TCALoadableTests"
                BlueprintName = "TCALoadableTests"
@@ -168,6 +140,20 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "LoadableForEachStore"
+               BuildableName = "LoadableForEachStore"
+               BlueprintName = "LoadableForEachStore"
+               ReferencedContainer = "container:">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "ListAction"
                BuildableName = "ListAction"
                BlueprintName = "ListAction"
@@ -180,8 +166,7 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      shouldUseLaunchSchemeArgsEnv = "YES"
-      codeCoverageEnabled = "YES">
+      shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
          <TestableReference
             skipped = "NO">
@@ -190,6 +175,16 @@
                BlueprintIdentifier = "LoadableListTests"
                BuildableName = "LoadableListTests"
                BlueprintName = "LoadableListTests"
+               ReferencedContainer = "container:">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "TCALoadableTests"
+               BuildableName = "TCALoadableTests"
+               BlueprintName = "TCALoadableTests"
                ReferencedContainer = "container:">
             </BuildableReference>
          </TestableReference>
@@ -207,9 +202,9 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "TCALoadableTests"
-               BuildableName = "TCALoadableTests"
-               BlueprintName = "TCALoadableTests"
+               BlueprintIdentifier = "LoadableForEachStoreTests"
+               BuildableName = "LoadableForEachStoreTests"
+               BlueprintName = "LoadableForEachStoreTests"
                ReferencedContainer = "container:">
             </BuildableReference>
          </TestableReference>
