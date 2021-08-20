@@ -1,0 +1,70 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "combine-schedulers",
+        "repositoryURL": "https://github.com/pointfreeco/combine-schedulers",
+        "state": {
+          "branch": null,
+          "revision": "6dcc7c034d28fe7ac652453faeae07656f723909",
+          "version": "0.5.1"
+        }
+      },
+      {
+        "package": "swift-case-paths",
+        "repositoryURL": "https://github.com/pointfreeco/swift-case-paths",
+        "state": {
+          "branch": null,
+          "revision": "d226d167bd4a68b51e352af5655c92bce8ee0463",
+          "version": "0.7.0"
+        }
+      },
+      {
+        "package": "swift-collections",
+        "repositoryURL": "https://github.com/apple/swift-collections",
+        "state": {
+          "branch": null,
+          "revision": "0959ba76a1d4a98fd11163aa83fd49c25b93bfae",
+          "version": "0.0.5"
+        }
+      },
+      {
+        "package": "swift-composable-architecture",
+        "repositoryURL": "https://github.com/pointfreeco/swift-composable-architecture.git",
+        "state": {
+          "branch": null,
+          "revision": "96cdc7e38e2d1d89b95b0ad80c914eb369476c4b",
+          "version": "0.24.0"
+        }
+      },
+      {
+        "package": "swift-identified-collections",
+        "repositoryURL": "https://github.com/pointfreeco/swift-identified-collections",
+        "state": {
+          "branch": null,
+          "revision": "edececbdb56b07e9402f2f3f5b907d220a28b4ea",
+          "version": "0.1.1"
+        }
+      },
+      {
+        "package": "SnapshotTesting",
+        "repositoryURL": "https://github.com/pointfreeco/swift-snapshot-testing.git",
+        "state": {
+          "branch": null,
+          "revision": "f8a9c997c3c1dab4e216a8ec9014e23144cbab37",
+          "version": "1.9.0"
+        }
+      },
+      {
+        "package": "xctest-dynamic-overlay",
+        "repositoryURL": "https://github.com/pointfreeco/xctest-dynamic-overlay",
+        "state": {
+          "branch": null,
+          "revision": "b9eeb1a7ea3fd6fea54ce57dee2f5794b667c8df",
+          "version": "0.2.0"
+        }
+      }
+    ]
+  },
+  "version": 1
+}

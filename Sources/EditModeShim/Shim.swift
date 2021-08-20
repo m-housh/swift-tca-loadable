@@ -7,7 +7,7 @@ import SwiftUI
     case active
     case inactive
     case transient
-    
+
     public var isEditing: Bool {
       switch self {
       case .active, .transient:
