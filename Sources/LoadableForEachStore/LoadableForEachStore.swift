@@ -3,6 +3,7 @@ import IdentifiedCollections
 import LoadableList
 import LoadableView
 import SwiftUI
+import XCTestDynamicOverlay
 
 // MARK: Environment
 
@@ -37,6 +38,8 @@ where Element: Identifiable
 
 extension LoadableForEachEnvironment {
 
+  // MARK: - LoadableListEnvironment Support
+
   /// Wraps a `LoadableListEnvironment` and returns an `IdentifiedArray` to be used in for each stores.
   ///
   /// - Parameters:
@@ -64,8 +67,53 @@ extension LoadableForEachEnvironment {
   ) where Element: Identifiable, Id == Element.ID {
     self.init(id: \.id, environment: listEnvironment)
   }
+
+  // MARK: LoadableEnvironmentRepresentable Support
+  
+  /// Wraps a `LoadableEnvironmentRepresentable` in a `LoadableForEachEnvironment`.
+  ///
+  /// - Parameters:
+  ///   - loadableEnvironment: The loadable environment to transform to a for each environment.
+  public init<Environment: LoadableEnvironmentRepresentable>(
+    environment loadableEnvironment: Environment
+  )
+  where
+    Environment.LoadedValue == IdentifiedArray<Id, Element>,
+    Environment.Failure == Failure,
+    Environment.LoadRequest == LoadRequest
+  {
+    self.init(load: loadableEnvironment.load, mainQueue: loadableEnvironment.mainQueue)
+  }
 }
 
+#if DEBUG
+  extension LoadableForEachEnvironment {
+    
+    /// A concrete `LoadableForEachEnvironment` that fails.
+    public static var failing: Self {
+      .init(
+        load: { _ in
+          XCTFail("\(Self.self).load is unimplemented")
+          return .none
+        },
+        mainQueue: .failing("\(Self.self).mainQueue is unimplemented")
+      )
+    }
+  }
+#endif
+
+extension LoadableForEachEnvironment {
+  
+  /// A concrete `LoadableForEachEnvironment` that does nothing.
+  public static var noop: Self {
+    .init(
+      load: { _ in
+        return .none
+      },
+      mainQueue: .main
+    )
+  }
+}
 // MARK: State
 
 /// Represents the state for a loadable for each view.
@@ -106,6 +154,8 @@ public struct LoadableForEachState<Element, Id: Hashable, Failure: Error> {
   }
 }
 extension LoadableForEachState: Equatable where Element: Equatable, Failure: Equatable {}
+
+// MARK: - State + Identifiable Support
 
 /// Convenience for when the element is `Identifiable`.
 public typealias LoadableForEachStateFor<Element, Failure: Error> = LoadableForEachState<
@@ -157,6 +207,8 @@ public enum LoadableForEachAction<
 extension LoadableForEachAction: Equatable
 where Element: Equatable, ElementAction: Equatable, Failure: Equatable {}
 
+// MARK: - Action + Identifiable Support
+
 /// Convenience for when the element is `Identifiable`.
 public typealias LoadableForEachStoreActionFor<
   Element,
@@ -165,6 +217,100 @@ public typealias LoadableForEachStoreActionFor<
 > = LoadableForEachAction<Element, ElementAction, Element.ID, Failure> where Element: Identifiable
 
 // MARK: - View
+
+/// A loadable list view that gives the caller access to a `ForEachStore`, once the elements have loaded.
+///
+/// **Example**
+/// ```swift
+///
+/// // setup types.
+/// public struct User: Equatable, Identifiable {
+///    public let id: UUID = UUID()
+///    public var name: String
+///    public var isFavorite: Bool
+///
+///    public init(name: String, isFavorite: Bool = false) {
+///      self.name = name
+///      self.isFavorite = isFavorite
+///    }
+///
+///    public static let blob = User.init(name: "blob")
+///    public static let blobJr = User.init(name: "blob-jr")
+///    public static let blobSr = User.init(name: "blob-sr")
+/// }
+///
+/// extension Array where Element == User {
+///   public static let users: Self = [.blob, .blobJr, .blobSr]
+/// }
+///
+/// public enum UserAction: Equatable {
+///   case binding(BindingAction<User>)
+/// }
+///
+/// public let userReducer = Reducer<User, UserAction, Void>.empty
+///   .binding(action: /UserAction.binding)
+///
+/// public enum LoadError: Error, Equatable {
+///   case loadingFailed
+/// }
+///
+/// // Create the environment dependency.
+/// extension LoadableForEachEnvironment where
+///   Element == User,
+///   Id = User.ID,
+///   LoadRequest = EmptyLoadRequest,
+///   Failure == LoadError
+/// {
+///   state let live = Self.init(
+///     load: { _ in
+///       Just(.init(uniqueElements: .users))
+///         .delay(for: .seconds(1), scheduler: DispatchQueue.main) // simulate loading.
+///         .setFailureType(to: LoadError.self)
+///         .eraseToEffect()
+///     },
+///     mainQueue: .main
+///   )
+/// }
+///
+///
+/// // Create the reducer.
+/// let appReducer = Reducer<
+///   LoadableForEachStateFor<User, LoadError>,
+///   LoadableForEachStoreActionFor<User, UserAction, LoadError>,
+///   LoadableForEachEnvironmentFor<User, LoadError>
+/// >.empty
+///   .loadableForEachStore(
+///     state: \.self,
+///     action: /LoadableForEachAction.self,
+///     environment: { $0 },
+///     forEach: userReducer
+///   )
+///
+/// // Use the for each view, you would typically not create the store inside the body, but just
+/// // an example of what it looks like.
+/// struct AppView: View {
+///   var body: some View {
+///     LoadableForEachStore(
+///       store: .init(
+///         initialState: .init(),
+///         reducer: appReducer,
+///         environment: .live
+///       )
+///     ) { store in
+///       WithViewStore(store) { viewStore in
+///         HStack {
+///           Text(viewStore.name)
+///           Spacer()
+///           Toggle(
+///             "Favorite"
+///              isOn: viewStore.binding(keyPath: \.isFavorite, send: UserAction.binding)
+///           )
+///         }
+///       }
+///     }
+///   }
+/// }
+/// ```
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 public struct LoadableForEachStore<
   Element: Equatable,
@@ -174,12 +320,17 @@ public struct LoadableForEachStore<
   Row: View
 >: View where Failure: Equatable {
 
+  /// The store for our state and actions.
   public let store:
     Store<
       LoadableForEachState<Element, Id, Failure>,
       LoadableForEachAction<Element, ElementAction, Id, Failure>
     >
+
+  /// Flag for if we automatically load the elements when the view appears.
   let autoLoad: Bool
+
+  /// Create the content / row for the given element.
   let row: (Store<Element, ElementAction>) -> Row
 
   /// Create a new loadable list view.
@@ -194,7 +345,7 @@ public struct LoadableForEachStore<
       LoadableForEachAction<Element, ElementAction, Id, Failure>
     >,
     autoLoad: Bool = true,
-    @ViewBuilder row: @escaping (Store<Element, ElementAction>) -> Row
+    @ViewBuilder content row: @escaping (Store<Element, ElementAction>) -> Row
   ) {
     self.autoLoad = autoLoad
     self.store = store
@@ -226,11 +377,11 @@ public struct LoadableForEachStore<
   }
 }
 
-// MARK: - Identfiable Support
+// MARK: - View + Identfiable Support
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 extension LoadableForEachStore where Element: Identifiable, Id == Element.ID {
 
-  /// Create a new loadable list view.
+  /// Create a new loadable list view, where the element is `Identifiable`.
   ///
   /// - Parameters:
   ///   - store: The store for the view state.

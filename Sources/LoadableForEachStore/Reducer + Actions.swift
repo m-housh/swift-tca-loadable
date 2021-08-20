@@ -3,6 +3,12 @@ import LoadableView
 
 // MARK: - ForEach
 extension Reducer {
+  
+  /// Enhances a reducer with `forEach` actions for use in a `LoadableForEachStore` view.
+  ///
+  /// - Parameters:
+  ///   - elementReducer: The reducer for the element.
+  ///   - environment: The environment for the element.
   public func forEach<
     Element,
     ElementAction,
@@ -18,15 +24,18 @@ extension Reducer {
     Action == LoadableForEachAction<Element, ElementAction, Id, Failure>
   {
     combined(
-      with:
-        elementReducer.forEach(
-          state: \.identifiedArray,
-          action: /Action.element(id:action:),
-          environment: { environment($0) }
-        )
+      with: elementReducer.forEach(
+        state: \.identifiedArray,
+        action: /Action.element(id:action:),
+        environment: { environment($0) }
+      )
     )
   }
 
+  /// Enhances a reducer with `forEach` actions for use in a `LoadableForEachStore` view, when the element environment is `Void`.
+  ///
+  /// - Parameters:
+  ///   - elementReducer: The reducer for the element.
   public func forEach<
     Element,
     ElementAction,
@@ -47,7 +56,17 @@ extension Reducer {
 
 extension Reducer {
 
-  // Adds minimal functionality / excludes `forEach` / excludes loading.  Includes loadable state changes, edit mode, and list actions.
+  // Adds minimal functionality / excludes `forEach` / excludes loading.
+  // Includes loadable state changes, edit mode, and list actions.
+  
+  /// Enhances a reducer with minimal functionality for use in a `LoadableForEachStore` view.
+  ///
+  /// When using this overload, the caller must still implement the `forEach` and `loadable(.load)` actions appropriately.  It
+  /// will however provide the appropriate state changes on the `loadable`.
+  ///
+  /// - Parameters:
+  ///   - state: The loadable for each state.
+  ///   - action: The loadable for each action.
   public func loadableForEachStore<
     Element,
     ElementAction,
@@ -72,6 +91,15 @@ extension Reducer {
   }
 
   // Adds all functionality except for `forEach`.
+  
+  /// Enhances a reducer with all functionality, except the `forEach` actions for use in a `LoadableForEachStore` view.
+  ///
+  /// When using this overload, the caller must still implement the `forEach` actions.
+  ///
+  /// - Parameters:
+  ///   - state: The loadable for each state.
+  ///   - action: The loadable for each action.
+  ///   - environment: The loadable for each environment.
   public func loadableForEachStore<
     Element,
     ElementAction,
@@ -100,6 +128,15 @@ extension Reducer {
   }
 
   // Adds all the functionality.
+  
+  /// Enhances a reducer with all functionality for use in a `LoadableForEachStore` view.
+  ///
+  /// - Parameters:
+  ///   - state: The loadable for each state.
+  ///   - action: The loadable for each action.
+  ///   - environment: The loadable for each environment.
+  ///   - elementReducer: The reducer for an individual element.
+  ///   - elementEnvironment: The environment for an individual element.
   public func loadableForEachStore<
     Element,
     ElementAction,
@@ -131,6 +168,14 @@ extension Reducer {
   }
 
   // Adds all the functionality, when element environment is `Void`.
+  
+  /// Enhances a reducer with all functionality for use in a `LoadableForEachStore` view, when the element environment is `Void`.
+  ///
+  /// - Parameters:
+  ///   - state: The loadable for each state.
+  ///   - action: The loadable for each action.
+  ///   - environment: The loadable for each environment.
+  ///   - elementReducer: The reducer for an individual element.
   public func loadableForEachStore<
     Element,
     ElementAction,
@@ -160,6 +205,15 @@ extension Reducer {
 extension Reducer {
 
   // Adds all functionality, when the element is `Identifiable`.
+  
+  /// Enhances a reducer with all functionality for use in a `LoadableForEachStore` view, when the element is `Identifiable`.
+  ///
+  /// - Parameters:
+  ///   - state: The loadable for each state.
+  ///   - action: The loadable for each action.
+  ///   - environment: The loadable for each environment.
+  ///   - elementReducer: The reducer for an individual element.
+  ///   - elementEnvironment: The environment for an individual element.
   public func loadableForEachStore<
     Element: Identifiable,
     ElementAction,
@@ -183,6 +237,15 @@ extension Reducer {
   }
 
   // Adds all functionality, when the element is `Identifiable` and element environment is `Void`.
+  
+  /// Enhances a reducer with all functionality for use in a `LoadableForEachStore` view, when the element is `Identifiable` and the
+  /// element environment is `Void`.
+  ///
+  /// - Parameters:
+  ///   - state: The loadable for each state.
+  ///   - action: The loadable for each action.
+  ///   - environment: The loadable for each environment.
+  ///   - elementReducer: The reducer for an individual element.
   public func loadableForEachStore<
     Element: Identifiable,
     ElementAction,
@@ -203,6 +266,16 @@ extension Reducer {
   }
 
   // Adds all functionality except for `forEach`, when the element is `Identifiable`.
+  
+  /// Enhances a reducer with all functionality, except the `forEach` actions for use in a `LoadableForEachStore` view, when the
+  /// element is `Identifiable`.
+  ///
+  /// When using this overload, the caller must still implement the `forEach` actions.
+  ///
+  /// - Parameters:
+  ///   - state: The loadable for each state.
+  ///   - action: The loadable for each action.
+  ///   - environment: The loadable for each environment.
   public func loadableForEachStore<
     Element: Identifiable,
     ElementAction,

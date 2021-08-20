@@ -1,8 +1,8 @@
 import ComposableArchitecture
-@_exported import EditModeModifier
-@_exported import ListAction
-@_exported import LoadableView
+import LoadableView
 import SwiftUI
+
+// MARK: - Environment
 
 /// Represents the environment for a loadable list.
 public struct LoadableListEnvironment<Element, LoadRequest, Failure: Error> {
@@ -31,8 +31,29 @@ public typealias LoadableListEnvironmentFor<Element, Failure: Error> = LoadableL
   Element, EmptyLoadRequest, Failure
 >
 
+// MARK: - LoadableEnvironmentRepresentable Support
+extension LoadableListEnvironment {
+  
+  /// Wraps a `LoadableEnvironmentRepresentable` in a `LoadableListEnvironment`
+  ///
+  /// - Parameters:
+  ///   - environment: The loadable environment to transform into a list environment.
+  public init<Environment: LoadableEnvironmentRepresentable>(
+    environment loadableEnvironment: Environment
+  )
+  where
+    Environment.LoadedValue == [Element],
+    Environment.LoadRequest == LoadRequest,
+    Environment.Failure == Failure
+  {
+    self.init(load: loadableEnvironment.load, mainQueue: loadableEnvironment.mainQueue)
+  }
+}
+
 #if DEBUG
   extension LoadableListEnvironment {
+    
+    /// A concrete `LoadableListEnvironment` that fails when used.
     public static var failing: Self {
       .init(
         load: { _ in .failing("\(Self.self).load is unimplemented") },
@@ -43,6 +64,8 @@ public typealias LoadableListEnvironmentFor<Element, Failure: Error> = LoadableL
 #endif
 
 extension LoadableListEnvironment {
+  
+  /// A concrete `LoadableListEnvironment` that does nothing.
   public static var noop: Self {
     .init(
       load: { _ in .none },
