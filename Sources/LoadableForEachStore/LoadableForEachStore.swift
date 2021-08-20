@@ -69,7 +69,7 @@ extension LoadableForEachEnvironment {
   }
 
   // MARK: LoadableEnvironmentRepresentable Support
-  
+
   /// Wraps a `LoadableEnvironmentRepresentable` in a `LoadableForEachEnvironment`.
   ///
   /// - Parameters:
@@ -88,7 +88,7 @@ extension LoadableForEachEnvironment {
 
 #if DEBUG
   extension LoadableForEachEnvironment {
-    
+
     /// A concrete `LoadableForEachEnvironment` that fails.
     public static var failing: Self {
       .init(
@@ -103,7 +103,7 @@ extension LoadableForEachEnvironment {
 #endif
 
 extension LoadableForEachEnvironment {
-  
+
   /// A concrete `LoadableForEachEnvironment` that does nothing.
   public static var noop: Self {
     .init(

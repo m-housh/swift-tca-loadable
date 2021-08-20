@@ -3,7 +3,7 @@ import LoadableView
 
 // MARK: - ForEach
 extension Reducer {
-  
+
   /// Enhances a reducer with `forEach` actions for use in a `LoadableForEachStore` view.
   ///
   /// - Parameters:
@@ -58,7 +58,7 @@ extension Reducer {
 
   // Adds minimal functionality / excludes `forEach` / excludes loading.
   // Includes loadable state changes, edit mode, and list actions.
-  
+
   /// Enhances a reducer with minimal functionality for use in a `LoadableForEachStore` view.
   ///
   /// When using this overload, the caller must still implement the `forEach` and `loadable(.load)` actions appropriately.  It
@@ -91,7 +91,7 @@ extension Reducer {
   }
 
   // Adds all functionality except for `forEach`.
-  
+
   /// Enhances a reducer with all functionality, except the `forEach` actions for use in a `LoadableForEachStore` view.
   ///
   /// When using this overload, the caller must still implement the `forEach` actions.
@@ -128,7 +128,7 @@ extension Reducer {
   }
 
   // Adds all the functionality.
-  
+
   /// Enhances a reducer with all functionality for use in a `LoadableForEachStore` view.
   ///
   /// - Parameters:
@@ -168,7 +168,7 @@ extension Reducer {
   }
 
   // Adds all the functionality, when element environment is `Void`.
-  
+
   /// Enhances a reducer with all functionality for use in a `LoadableForEachStore` view, when the element environment is `Void`.
   ///
   /// - Parameters:
@@ -205,7 +205,7 @@ extension Reducer {
 extension Reducer {
 
   // Adds all functionality, when the element is `Identifiable`.
-  
+
   /// Enhances a reducer with all functionality for use in a `LoadableForEachStore` view, when the element is `Identifiable`.
   ///
   /// - Parameters:
@@ -237,7 +237,7 @@ extension Reducer {
   }
 
   // Adds all functionality, when the element is `Identifiable` and element environment is `Void`.
-  
+
   /// Enhances a reducer with all functionality for use in a `LoadableForEachStore` view, when the element is `Identifiable` and the
   /// element environment is `Void`.
   ///
@@ -266,7 +266,7 @@ extension Reducer {
   }
 
   // Adds all functionality except for `forEach`, when the element is `Identifiable`.
-  
+
   /// Enhances a reducer with all functionality, except the `forEach` actions for use in a `LoadableForEachStore` view, when the
   /// element is `Identifiable`.
   ///

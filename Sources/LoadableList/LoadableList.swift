@@ -33,7 +33,7 @@ public typealias LoadableListEnvironmentFor<Element, Failure: Error> = LoadableL
 
 // MARK: - LoadableEnvironmentRepresentable Support
 extension LoadableListEnvironment {
-  
+
   /// Wraps a `LoadableEnvironmentRepresentable` in a `LoadableListEnvironment`
   ///
   /// - Parameters:
@@ -52,7 +52,7 @@ extension LoadableListEnvironment {
 
 #if DEBUG
   extension LoadableListEnvironment {
-    
+
     /// A concrete `LoadableListEnvironment` that fails when used.
     public static var failing: Self {
       .init(
@@ -64,7 +64,7 @@ extension LoadableListEnvironment {
 #endif
 
 extension LoadableListEnvironment {
-  
+
   /// A concrete `LoadableListEnvironment` that does nothing.
   public static var noop: Self {
     .init(
