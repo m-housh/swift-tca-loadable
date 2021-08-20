@@ -1,7 +1,7 @@
 import ComposableArchitecture
 @_exported import EditModeModifier
-@_exported import LoadableView
 @_exported import ListAction
+@_exported import LoadableView
 import SwiftUI
 
 /// Represents the environment for a loadable list.
@@ -26,18 +26,20 @@ public struct LoadableListEnvironment<Element, LoadRequest, Failure: Error> {
     self.mainQueue = mainQueue
   }
 }
-extension LoadableListEnvironment: LoadableEnvironmentRepresentable { }
-public typealias LoadableListEnvironmentFor<Element, Failure: Error> = LoadableListEnvironment<Element, EmptyLoadRequest, Failure>
+extension LoadableListEnvironment: LoadableEnvironmentRepresentable {}
+public typealias LoadableListEnvironmentFor<Element, Failure: Error> = LoadableListEnvironment<
+  Element, EmptyLoadRequest, Failure
+>
 
 #if DEBUG
-extension LoadableListEnvironment {
-  public static var failing: Self {
-    .init(
-      load: { _ in .failing("\(Self.self).load is unimplemented") },
-      mainQueue: .failing("\(Self.self).mainQueue is unimplemented")
-    )
+  extension LoadableListEnvironment {
+    public static var failing: Self {
+      .init(
+        load: { _ in .failing("\(Self.self).load is unimplemented") },
+        mainQueue: .failing("\(Self.self).mainQueue is unimplemented")
+      )
+    }
   }
-}
 #endif
 
 extension LoadableListEnvironment {
@@ -53,13 +55,13 @@ extension LoadableListEnvironment {
 
 /// Represents the state of a loadable list view.
 public struct LoadableListViewState<Element, Failure: Error> {
-  
+
   /// The current edit mode of the view.
   public var editMode: EditMode
-  
+
   /// The loadable items.
   public var loadable: Loadable<[Element], Failure>
-  
+
   /// Create a new loadable list view state.
   ///
   /// - Parameters:
@@ -73,7 +75,7 @@ public struct LoadableListViewState<Element, Failure: Error> {
     self.loadable = loadable
   }
 }
-extension LoadableListViewState: Equatable where Element: Equatable, Failure: Equatable { }
+extension LoadableListViewState: Equatable where Element: Equatable, Failure: Equatable {}
 public typealias LoadableListViewStateFor = LoadableListViewState
 
 // MARK: - Action
@@ -84,12 +86,11 @@ public enum LoadableListViewAction<Element, Failure: Error> {
   case list(ListAction)
   case loadable(LoadableAction<[Element], Failure>)
 }
-extension LoadableListViewAction: Equatable where Element: Equatable, Failure: Equatable { }
+extension LoadableListViewAction: Equatable where Element: Equatable, Failure: Equatable {}
 public typealias LoadableListViewActionFor = LoadableListViewAction
 
 extension Reducer {
-  
-  
+
   /// Enhances a reducer with loadable list actions.
   ///
   /// When using this overload the caller still needs to implement / override the `loadable(.load)`, however it handles
@@ -115,7 +116,7 @@ extension Reducer {
       self
     )
   }
-  
+
   /// Enhances a reducer with loadable list actions.
   ///
   /// - Parameters:
@@ -208,13 +209,14 @@ public struct LoadableListView<
   Failure: Error,
   Row: View
 >: View where Failure: Equatable {
-  
-  public let store: Store<LoadableListViewStateFor<Element, Failure>, LoadableListViewActionFor<Element, Failure>>
-  
+
+  public let store:
+    Store<LoadableListViewStateFor<Element, Failure>, LoadableListViewActionFor<Element, Failure>>
+
   let autoLoad: Bool
   let id: KeyPath<Element, Id>
   let row: (Element) -> Row
-  
+
   /// Create a new loadable list view.
   ///
   /// - Parameters:
@@ -223,7 +225,9 @@ public struct LoadableListView<
   ///   - id: The id used to identify the row.
   ///   - row: The view builder for an individual row in the list.
   public init(
-    store: Store<LoadableListViewStateFor<Element, Failure>, LoadableListViewActionFor<Element, Failure>>,
+    store: Store<
+      LoadableListViewStateFor<Element, Failure>, LoadableListViewActionFor<Element, Failure>
+    >,
     autoLoad: Bool = true,
     id: KeyPath<Element, Id>,
     @ViewBuilder row: @escaping (Element) -> Row
@@ -233,7 +237,7 @@ public struct LoadableListView<
     self.row = row
     self.id = id
   }
-  
+
   public var body: some View {
     WithViewStore(store) { viewStore in
       LoadableView(
@@ -267,7 +271,9 @@ extension LoadableListView where Element: Identifiable, Id == Element.ID {
   ///   - autoLoad: Whether we automatically load items when the view first appears.
   ///   - row: The view builder for an individual row in the list.
   public init(
-    store: Store<LoadableListViewStateFor<Element, Failure>, LoadableListViewActionFor<Element, Failure>>,
+    store: Store<
+      LoadableListViewStateFor<Element, Failure>, LoadableListViewActionFor<Element, Failure>
+    >,
     autoLoad: Bool = true,
     @ViewBuilder row: @escaping (Element) -> Row
   ) {
@@ -285,7 +291,8 @@ extension LoadableListView where Element: Identifiable, Id == Element.ID {
   import Combine
   import PreviewSupport
 
-  extension LoadableListEnvironment where Element == User, LoadRequest == EmptyLoadRequest, Failure == LoadError {
+  extension LoadableListEnvironment
+  where Element == User, LoadRequest == EmptyLoadRequest, Failure == LoadError {
     public static let users = Self.init(
       load: { _ in
         Just([User].users)
@@ -310,7 +317,8 @@ extension LoadableListView where Element: Identifiable, Id == Element.ID {
 
   @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
   struct LoadableListViewPreviewWithEditModeButton: View {
-    let store: Store<LoadableListViewStateFor<User, LoadError>, LoadableListViewActionFor<User, LoadError>>
+    let store:
+      Store<LoadableListViewStateFor<User, LoadError>, LoadableListViewActionFor<User, LoadError>>
 
     var body: some View {
       NavigationView {

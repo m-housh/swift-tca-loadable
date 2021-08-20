@@ -1,40 +1,43 @@
 import ComposableArchitecture
 import LoadableView
-@_exported import typealias LoadableList.LoadableListEnvironmentFor
-@_exported import ListAction
 
 // MARK: - ForEach
 extension Reducer {
   public func forEach<
-   Element,
-   ElementAction,
-   ElementEnvironment,
-   Id: Hashable,
-   Failure: Error
+    Element,
+    ElementAction,
+    ElementEnvironment,
+    Id: Hashable,
+    Failure: Error
   >(
     elementReducer: Reducer<Element, ElementAction, ElementEnvironment>,
     environment: @escaping (Environment) -> ElementEnvironment
-  ) -> Reducer where State == LoadableForEachState<Element, Id, Failure>,
-                     Action == LoadableForEachAction<Element, ElementAction, Id, Failure>
+  ) -> Reducer
+  where
+    State == LoadableForEachState<Element, Id, Failure>,
+    Action == LoadableForEachAction<Element, ElementAction, Id, Failure>
   {
-    combined(with:
-      elementReducer.forEach(
-        state: \.identifiedArray,
-        action: /Action.element(id:action:),
-        environment: { environment($0) }
-      )
+    combined(
+      with:
+        elementReducer.forEach(
+          state: \.identifiedArray,
+          action: /Action.element(id:action:),
+          environment: { environment($0) }
+        )
     )
   }
-  
+
   public func forEach<
-   Element,
-   ElementAction,
-   Id: Hashable,
-   Failure: Error
+    Element,
+    ElementAction,
+    Id: Hashable,
+    Failure: Error
   >(
     elementReducer: Reducer<Element, ElementAction, Void>
-  ) -> Reducer where State == LoadableForEachState<Element, Id, Failure>,
-                     Action == LoadableForEachAction<Element, ElementAction, Id, Failure>
+  ) -> Reducer
+  where
+    State == LoadableForEachState<Element, Id, Failure>,
+    Action == LoadableForEachAction<Element, ElementAction, Id, Failure>
   {
     forEach(elementReducer: elementReducer, environment: { _ in })
   }
@@ -43,7 +46,7 @@ extension Reducer {
 // MARK: - LoadableForEachStore
 
 extension Reducer {
-  
+
   // Adds minimal functionality / excludes `forEach` / excludes loading.  Includes loadable state changes, edit mode, and list actions.
   public func loadableForEachStore<
     Element,
@@ -67,7 +70,7 @@ extension Reducer {
       self
     )
   }
-  
+
   // Adds all functionality except for `forEach`.
   public func loadableForEachStore<
     Element,
@@ -78,7 +81,9 @@ extension Reducer {
     id: KeyPath<Element, Id>,
     state: WritableKeyPath<State, LoadableForEachState<Element, Id, Failure>>,
     action: CasePath<Action, LoadableForEachAction<Element, ElementAction, Id, Failure>>,
-    environment: @escaping (Environment) -> LoadableForEachEnvironment<Element, Id, EmptyLoadRequest, Failure>
+    environment: @escaping (Environment) -> LoadableForEachEnvironment<
+      Element, Id, EmptyLoadRequest, Failure
+    >
   ) -> Reducer {
     .combine(
       Reducer<
@@ -93,7 +98,7 @@ extension Reducer {
       self
     )
   }
-  
+
   // Adds all the functionality.
   public func loadableForEachStore<
     Element,
@@ -105,7 +110,9 @@ extension Reducer {
     id: KeyPath<Element, Id>,
     state: WritableKeyPath<State, LoadableForEachState<Element, Id, Failure>>,
     action: CasePath<Action, LoadableForEachAction<Element, ElementAction, Id, Failure>>,
-    environment: @escaping (Environment) -> LoadableForEachEnvironment<Element, Id, EmptyLoadRequest, Failure>,
+    environment: @escaping (Environment) -> LoadableForEachEnvironment<
+      Element, Id, EmptyLoadRequest, Failure
+    >,
     forEach elementReducer: Reducer<Element, ElementAction, ElementEnvironment>,
     elementEnvironment: @escaping (Environment) -> ElementEnvironment
   ) -> Reducer {
@@ -122,7 +129,7 @@ extension Reducer {
       self
     )
   }
-  
+
   // Adds all the functionality, when element environment is `Void`.
   public func loadableForEachStore<
     Element,
@@ -133,7 +140,9 @@ extension Reducer {
     id: KeyPath<Element, Id>,
     state: WritableKeyPath<State, LoadableForEachState<Element, Id, Failure>>,
     action: CasePath<Action, LoadableForEachAction<Element, ElementAction, Id, Failure>>,
-    environment: @escaping (Environment) -> LoadableForEachEnvironment<Element, Id, EmptyLoadRequest, Failure>,
+    environment: @escaping (Environment) -> LoadableForEachEnvironment<
+      Element, Id, EmptyLoadRequest, Failure
+    >,
     forEach elementReducer: Reducer<Element, ElementAction, Void>
   ) -> Reducer {
     loadableForEachStore(
@@ -149,7 +158,7 @@ extension Reducer {
 
 // MARK: - LoadableForEachStore - Identifiable Support
 extension Reducer {
-  
+
   // Adds all functionality, when the element is `Identifiable`.
   public func loadableForEachStore<
     Element: Identifiable,
@@ -172,7 +181,7 @@ extension Reducer {
       elementEnvironment: elementEnvironment
     )
   }
-  
+
   // Adds all functionality, when the element is `Identifiable` and element environment is `Void`.
   public func loadableForEachStore<
     Element: Identifiable,
@@ -192,7 +201,7 @@ extension Reducer {
       forEach: elementReducer
     )
   }
-  
+
   // Adds all functionality except for `forEach`, when the element is `Identifiable`.
   public func loadableForEachStore<
     Element: Identifiable,

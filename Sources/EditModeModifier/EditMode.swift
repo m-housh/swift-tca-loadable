@@ -8,7 +8,7 @@ public enum EditModeAction: Equatable {
 }
 
 extension Reducer {
-  
+
   /// Enhances a reducer with edit mode capabilities.
   ///
   /// - Parameters:
@@ -30,12 +30,12 @@ extension Reducer {
 /// Sets the edit mode on the environment.
 private struct EditModeModifier: ViewModifier {
   let store: Store<EditMode, EditModeAction>
-  
+
   func body(content: Content) -> some View {
     WithViewStore(store) { viewStore in
       content.environment(
         \.editMode,
-         viewStore.binding(keyPath: \.self, send: EditModeAction.binding)
+        viewStore.binding(keyPath: \.self, send: EditModeAction.binding)
       )
     }
   }
@@ -44,11 +44,11 @@ private struct EditModeModifier: ViewModifier {
 /// Represents a composable style edit button.
 public struct EditButton: View {
   public let store: Store<EditMode, EditModeAction>
-  
+
   public init(store: Store<EditMode, EditModeAction>) {
     self.store = store
   }
-  
+
   public var body: some View {
     WithViewStore(store) { viewStore in
       Button(viewStore.isEditing ? "Done" : "Edit") {
@@ -59,7 +59,7 @@ public struct EditButton: View {
 }
 
 extension View {
-  
+
   /// Enhances a view with the edit mode environment.
   public func editMode(
     _ store: Store<EditMode, EditModeAction>

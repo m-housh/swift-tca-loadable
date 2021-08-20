@@ -2,16 +2,16 @@ import ComposableArchitecture
 
 /// Represents common actions that can be taken on lists.
 public enum ListAction: Equatable {
-  
+
   /// Delete rows from the list.
   case delete(IndexSet)
-  
+
   /// Move rows in the list.
   case move(IndexSet, Int)
 }
 
 extension Reducer {
-  
+
   /// Enhances a reducer with list actions.
   ///
   /// - Parameters:
@@ -27,13 +27,13 @@ extension Reducer {
         case let .delete(indexSet):
           state.remove(atOffsets: indexSet)
           return .none
-          
+
         case let .move(source, destination):
           state.move(fromOffsets: source, toOffset: destination)
           return .none
         }
       }
-        .pullback(state: state, action: action, environment: { _ in }),
+      .pullback(state: state, action: action, environment: { _ in }),
       self
     )
   }
@@ -55,7 +55,7 @@ extension Reducer {
       self
     )
   }
-  
+
   /// Enhances an `IdentifiedArray` reducer with list actions.
   ///
   /// - Parameters:
@@ -77,11 +77,11 @@ extension Reducer {
           return .none
         }
       }
-        .pullback(state: state, action: action, environment: { _ in }),
+      .pullback(state: state, action: action, environment: { _ in }),
       self
     )
   }
-  
+
   /// Enhances an optional `IdentifiedArray` reducer with list actions.
   ///
   /// - Parameters:

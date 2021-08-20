@@ -1,10 +1,10 @@
 //
 //  LoadableView.swift
-//  
+//
 
-import SwiftUI
 import Combine
 import ComposableArchitecture
+import SwiftUI
 
 /// A view that can handle loadable items using the `ComposableArchitecture` pattern.  You will most likely want to make a more concrete
 /// view that fits your needs, using this internally.
@@ -73,28 +73,28 @@ public struct LoadableView<
   ErrorView: View,
   IsLoadingView: View
 >: View {
-  
+
   /// The store to derive our state and actions from.
   public let store: Store<Loadable<LoadedValue, Failure>, Action>
-  
+
   /// A flag for if we automatically send a load action when the view appears and our state is `.notRequested`
   let autoLoad: Bool
-  
+
   /// The view shown when our state is `.notRequested`
   let notRequestedView: (Store<Void, Action>) -> NotRequestedView
-  
+
   /// The view shown when our state is `.loaded`
   let loadedView: (Store<LoadedValue, Action>) -> LoadedView
-  
+
   /// The view shown when our state is `.isLoading`
   let isLoadingView: (Store<LoadedValue?, Action>) -> IsLoadingView
-  
+
   /// The view shown when our state is `.failed`
   let errorView: (Store<Failure, Action>) -> ErrorView
-  
+
   /// The action to call to load data.
   let loadAction: Action
-  
+
   /// Create a loadable view.
   ///
   /// - parameters:
@@ -121,7 +121,7 @@ public struct LoadableView<
     self.loadedView = loadedView
     self.loadAction = loadAction
   }
-  
+
   public var body: some View {
     SwitchStore(self.store) {
       // Not Requested.
@@ -189,7 +189,7 @@ public struct LoadableView<
 
 // MARK: - View Overrides.
 extension LoadableView {
-  
+
   /// Replaces / overrides the `error` view.
   ///
   /// - Parameters:
@@ -207,7 +207,7 @@ extension LoadableView {
       errorView: view
     )
   }
-  
+
   /// Replaces / overrides the `isLoading`  view.
   ///
   /// - Parameters:
@@ -225,7 +225,7 @@ extension LoadableView {
       errorView: errorView
     )
   }
-  
+
   /// Replaces / overrides the `loaded`  view.
   ///
   /// - Parameters:
@@ -243,7 +243,7 @@ extension LoadableView {
       errorView: errorView
     )
   }
-  
+
   /// Replaces / overrides the `notRequested`  view.
   ///
   /// - Parameters:
@@ -264,15 +264,33 @@ extension LoadableView {
 }
 
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-extension LoadableView where
-Failure: Equatable,
-NotRequestedView == ProgressView<EmptyView, EmptyView>,
-IsLoadingView == SwitchStore<LoadedValue?, Action, WithViewStore<LoadedValue?, Action, _ConditionalContent<
-  _ConditionalContent<CaseLet<LoadedValue?, Action, Void, Action, ProgressView<EmptyView, EmptyView>>,
-  CaseLet<LoadedValue?, Action, LoadedValue, Action, VStack<TupleView<(ProgressView<EmptyView, EmptyView>,
-  LoadedView)>>>>, Default<_ExhaustivityCheckView<LoadedValue?, Action>>>>
->,
-ErrorView == WithViewStore<Failure, Action, VStack<TupleView<(Text, Button<Text>)>>>
+extension LoadableView
+where
+  Failure: Equatable,
+  NotRequestedView == ProgressView<EmptyView, EmptyView>,
+  IsLoadingView == SwitchStore<
+    LoadedValue?, Action,
+    WithViewStore<
+      LoadedValue?, Action,
+      _ConditionalContent<
+        _ConditionalContent<
+          CaseLet<LoadedValue?, Action, Void, Action, ProgressView<EmptyView, EmptyView>>,
+          CaseLet<
+            LoadedValue?, Action, LoadedValue, Action,
+            VStack<
+              TupleView<
+                (
+                  ProgressView<EmptyView, EmptyView>,
+                  LoadedView
+                )
+              >
+            >
+          >
+        >, Default<_ExhaustivityCheckView<LoadedValue?, Action>>
+      >
+    >
+  >,
+  ErrorView == WithViewStore<Failure, Action, VStack<TupleView<(Text, Button<Text>)>>>
 {
   /// Create a loadable view with defaults for all the states, except for `loaded`.
   ///
@@ -297,7 +315,7 @@ ErrorView == WithViewStore<Failure, Action, VStack<TupleView<(Text, Button<Text>
       isLoadingView: { store in
         SwitchStore(store) {
           CaseLet<
-            Optional<LoadedValue>,
+            LoadedValue?,
             Action,
             Void,
             Action,
@@ -308,7 +326,7 @@ ErrorView == WithViewStore<Failure, Action, VStack<TupleView<(Text, Button<Text>
             then: { _ in ProgressView() }
           )
           CaseLet<
-            Optional<LoadedValue>,
+            LoadedValue?,
             Action,
             LoadedValue,
             Action,
@@ -338,20 +356,37 @@ ErrorView == WithViewStore<Failure, Action, VStack<TupleView<(Text, Button<Text>
   }
 }
 
-
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-extension LoadableView where
-Action == LoadableAction<LoadedValue, Failure>,
-Failure: Equatable,
-NotRequestedView == ProgressView<EmptyView, EmptyView>,
-IsLoadingView == SwitchStore<LoadedValue?, Action, WithViewStore<LoadedValue?, Action, _ConditionalContent<
-  _ConditionalContent<CaseLet<LoadedValue?, Action, Void, Action, ProgressView<EmptyView, EmptyView>>,
-  CaseLet<LoadedValue?, Action, LoadedValue, Action, VStack<TupleView<(ProgressView<EmptyView, EmptyView>,
-  LoadedView)>>>>, Default<_ExhaustivityCheckView<LoadedValue?, Action>>>>
->,
-ErrorView == WithViewStore<Failure, Action, VStack<TupleView<(Text, Button<Text>)>>>
+extension LoadableView
+where
+  Action == LoadableAction<LoadedValue, Failure>,
+  Failure: Equatable,
+  NotRequestedView == ProgressView<EmptyView, EmptyView>,
+  IsLoadingView == SwitchStore<
+    LoadedValue?, Action,
+    WithViewStore<
+      LoadedValue?, Action,
+      _ConditionalContent<
+        _ConditionalContent<
+          CaseLet<LoadedValue?, Action, Void, Action, ProgressView<EmptyView, EmptyView>>,
+          CaseLet<
+            LoadedValue?, Action, LoadedValue, Action,
+            VStack<
+              TupleView<
+                (
+                  ProgressView<EmptyView, EmptyView>,
+                  LoadedView
+                )
+              >
+            >
+          >
+        >, Default<_ExhaustivityCheckView<LoadedValue?, Action>>
+      >
+    >
+  >,
+  ErrorView == WithViewStore<Failure, Action, VStack<TupleView<(Text, Button<Text>)>>>
 {
-  
+
   /// Create a loadable view with defaults for all the states, except for `loaded`.
   ///
   /// - parameters:

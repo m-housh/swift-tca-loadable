@@ -21,8 +21,9 @@ let package = Package(
     .library(name: "PreviewSupport", targets: ["PreviewSupport"]),
   ],
   dependencies: [
-    .package(url: "https://github.com/pointfreeco/swift-composable-architecture.git", from: "0.8.0"),
-    .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", from: "1.8.2")
+    .package(
+      url: "https://github.com/pointfreeco/swift-composable-architecture.git", from: "0.8.0"),
+    .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", from: "1.8.2"),
   ],
   targets: [
     .target(
@@ -39,7 +40,7 @@ let package = Package(
     .target(
       name: "ListAction",
       dependencies: [
-        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+        .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
       ]
     ),
     .target(
@@ -71,7 +72,7 @@ let package = Package(
       name: "LoadableListTests",
       dependencies: [
         "LoadableList",
-        "SnapshotTesting"
+        "SnapshotTesting",
       ]
     ),
     .target(
@@ -91,20 +92,20 @@ let package = Package(
     .target(
       name: "LoadableView",
       dependencies: [
-        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+        .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
       ]
     ),
     .target(
       name: "PreviewSupport",
       dependencies: [
-        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+        .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
       ]
     ),
     .testTarget(
       name: "TCALoadableTests",
       dependencies: [
         "LoadableView",
-        "SnapshotTesting"
+        "SnapshotTesting",
       ]
     ),
   ]

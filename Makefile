@@ -25,3 +25,16 @@ code-cov-report:
 			-instr-profile=.build/debug/codecov/default.profdata \
 			-ignore-filename-regex=".build|Tests" \
 			-use-color
+
+format:
+	@docker run \
+		--rm \
+		--workdir "/work" \
+		--volume "$(PWD):/work" \
+		--platform linux/amd64 \
+		mhoush/swift-format:latest \
+		format \
+		--in-place \
+		--recursive \
+		./Package.swift \
+		./Sources/
