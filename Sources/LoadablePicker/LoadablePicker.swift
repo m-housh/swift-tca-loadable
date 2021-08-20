@@ -11,11 +11,9 @@ public struct LoadablePickerState<Element, Id: Hashable, Failure: Error> {
   
   /// The loadable items.
   public var loadable: Loadable<[Element], Failure>
-  
-  public var id: KeyPath<Element, Id>
-  
+    
   /// The picker selection.
-  public var selection: Element.ID?
+  public var selection: Id?
   
   /// Create a new loadable picker state
   ///
@@ -23,7 +21,6 @@ public struct LoadablePickerState<Element, Id: Hashable, Failure: Error> {
   ///   - loadable: The loadable items.
   ///   - selection: The picker selection.
   public init(
-    id: KeyPath<Element, Id>,
     loadable: Loadable<[Element], Failure> = .notRequested,
     selection: Id? = nil
   ) {
@@ -32,32 +29,25 @@ public struct LoadablePickerState<Element, Id: Hashable, Failure: Error> {
   }
 }
 extension LoadablePickerState: Equatable where Element: Equatable, Failure: Equatable { }
-extension LoadablePickerState where Element: Identifiable, Id == Element.ID {
-  
-  public init(
-    loadable: Loadable<[Element], Failure> = .notRequested,
-    selection: Element.ID? = nil
-  ) {
-    self.init(
-      id: \.id,
-      loadable: loadable,
-      selection: selection
-    )
-  }
-}
+
+public typealias LoadablePickerStateFor<Element, Failure: Error> = LoadablePickerState<Element, Element.ID, Failure>
+where Element: Identifiable
 
 // MARK: - Action
 
 /// Represents the actions take by a loadable picker view.
-public enum LoadablePickerAction<Element: Identifiable, Failure: Error> {
+public enum LoadablePickerAction<Element, Id: Hashable, Failure: Error> {
   
   /// Changes to the picker state.
-  case binding(BindingAction<LoadablePickerState<Element, Failure>>)
+  case binding(BindingAction<LoadablePickerState<Element, Id, Failure>>)
   
   /// Load actions.
   case loadable(LoadableAction<[Element], Failure>)
 }
 extension LoadablePickerAction: Equatable where Element: Equatable, Failure: Equatable { }
+
+public typealias LoadablePickerActionFor<Element, Failure: Error> = LoadablePickerAction<Element, Element.ID, Failure>
+where Element: Identifiable
 
 extension Reducer {
   
@@ -69,12 +59,12 @@ extension Reducer {
   /// - Parameters:
   ///   - state: The loadable picker state.
   ///   - action: The loadable picker action.
-  public func loadablePicker<Element: Identifiable, Failure: Error>(
-    state: WritableKeyPath<State, LoadablePickerState<Element, Failure>>,
-    action: CasePath<Action, LoadablePickerAction<Element, Failure>>
+  public func loadablePicker<Element, Id: Hashable, Failure: Error>(
+    state: WritableKeyPath<State, LoadablePickerState<Element, Id, Failure>>,
+    action: CasePath<Action, LoadablePickerAction<Element, Id, Failure>>
   ) -> Reducer {
     .combine(
-      Reducer<LoadablePickerState<Element, Failure>, LoadablePickerAction<Element, Failure>, Void>
+      Reducer<LoadablePickerState<Element, Id, Failure>, LoadablePickerAction<Element, Id, Failure>, Void>
         .empty
         .binding(action: /LoadablePickerAction.binding)
         .loadable(state: \.loadable, action: /LoadablePickerAction.loadable)
@@ -89,15 +79,15 @@ extension Reducer {
   ///   - state: The loadable picker state.
   ///   - action: The loadable picker action.
   ///   - environment: The loadable picker environment.
-  public func loadablePicker<Element: Identifiable, Failure: Error>(
-    state: WritableKeyPath<State, LoadablePickerState<Element, Failure>>,
-    action: CasePath<Action, LoadablePickerAction<Element, Failure>>,
+  public func loadablePicker<Element, Id: Hashable, Failure: Error>(
+    state: WritableKeyPath<State, LoadablePickerState<Element, Id, Failure>>,
+    action: CasePath<Action, LoadablePickerAction<Element, Id, Failure>>,
     environment: @escaping (Environment) -> LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>
   ) -> Reducer {
     .combine(
       Reducer<
-        LoadablePickerState<Element, Failure>,
-        LoadablePickerAction<Element, Failure>,
+        LoadablePickerState<Element, Id, Failure>,
+        LoadablePickerAction<Element, Id, Failure>,
         LoadableListViewEnvironment<Element, EmptyLoadRequest, Failure>
       >.empty
         .binding(action: /LoadablePickerAction.binding)
@@ -170,19 +160,22 @@ extension Reducer {
 // TODO: Remove Identifiable requirement.
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 public struct LoadablePicker<
-  Element: Identifiable,
+  Element,
+  Id: Hashable,
   Failure: Error,
   Row: View
 >: View where Failure: Equatable, Element: Equatable {
   
   /// The store  for the view.
-  public let store: Store<LoadablePickerState<Element, Failure>, LoadablePickerAction<Element, Failure>>
+  public let store: Store<LoadablePickerState<Element, Id, Failure>, LoadablePickerAction<Element, Id, Failure>>
   
   /// Flag for if we allow a nil selection.
   let allowNilSelection: Bool
   
   /// Flag for if we automatically load items when the view appears.
   let autoLoad: Bool
+  
+  let id: KeyPath<Element, Id>
   
   /// The title used for a row used to set the selection to `nil`.  Will default to `"None"` if not supplied.
   let nilSelectionTitle: String?
@@ -191,7 +184,7 @@ public struct LoadablePicker<
   let row: (Element) -> Row
   
   /// Creates the picker title based on the current state.
-  let title: (LoadablePickerState<Element, Failure>) -> String
+  let title: (LoadablePickerState<Element, Id, Failure>) -> String
   
   /// Create a new loadable picker view.
   ///
@@ -203,16 +196,18 @@ public struct LoadablePicker<
   ///   - nilSelectionTitle: The title used for a row used to set the selection to `nil`.  Will default to `"None"` if not supplied.
   ///   - row: Creates a view for an element.
   public init(
-    store: Store<LoadablePickerState<Element, Failure>, LoadablePickerAction<Element, Failure>>,
+    id: KeyPath<Element, Id>,
+    store: Store<LoadablePickerState<Element, Id, Failure>, LoadablePickerAction<Element, Id, Failure>>,
     allowNilSelection: Bool = false,
     autoLoad: Bool = true,
-    title: @escaping (LoadablePickerState<Element, Failure>) -> String = { _ in "" },
+    title: @escaping (LoadablePickerState<Element, Id, Failure>) -> String = { _ in "" },
     nilSelectionTitle: String? = "None",
     @ViewBuilder row: @escaping (Element) -> Row
   ) {
     self.store = store
     self.allowNilSelection = allowNilSelection
     self.autoLoad = autoLoad
+    self.id = id
     self.title = title
     self.row = row
     self.nilSelectionTitle = allowNilSelection ?
@@ -235,12 +230,12 @@ public struct LoadablePicker<
             List {
               if allowNilSelection, let nilSelectionTitle = nilSelectionTitle {
                 Text(nilSelectionTitle)
-                  .tag(nil as Element.ID?)
+                  .tag(nil as Id?)
               }
               
-              ForEach(loadedViewStore.state) {
+              ForEach(loadedViewStore.state, id: id) {
                 row($0)
-                  .tag($0.id as Element.ID?)
+                  .tag($0[keyPath: id] as Id?)
               }
             }
           }
@@ -264,13 +259,15 @@ extension LoadablePicker {
   ///   - row: Creates a view for an element.
   public init(
     _ title: String,
-    store: Store<LoadablePickerState<Element, Failure>, LoadablePickerAction<Element, Failure>>,
+    id: KeyPath<Element, Id>,
+    store: Store<LoadablePickerState<Element, Id, Failure>, LoadablePickerAction<Element, Id, Failure>>,
     allowNilSelection: Bool = false,
     autoLoad: Bool = true,
     nilSelectionTitle: String? = nil,
     @ViewBuilder row: @escaping (Element) -> Row
   ) {
     self.init(
+      id: id,
       store: store,
       allowNilSelection: allowNilSelection,
       autoLoad: autoLoad,
@@ -281,12 +278,64 @@ extension LoadablePicker {
   }
 }
 
+// MARK: LoadablePicker + Identifiable Support
+@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
+extension LoadablePicker {
+  
+  public init(
+    store: Store<LoadablePickerStateFor<Element, Failure>, LoadablePickerActionFor<Element, Failure>>,
+    allowNilSelection: Bool = false,
+    autoLoad: Bool = true,
+    title: @escaping (LoadablePickerStateFor<Element, Failure>) -> String = { _ in "" },
+    nilSelectionTitle: String? = "None",
+    @ViewBuilder row: @escaping (Element) -> Row
+  ) where Element: Identifiable, Id == Element.ID {
+    self.init(
+      id: \.id,
+      store: store,
+      allowNilSelection: allowNilSelection,
+      autoLoad: autoLoad,
+      title: title,
+      nilSelectionTitle: nilSelectionTitle,
+      row: row
+    )
+  }
+  
+  /// Create a new loadable picker view.
+  ///
+  /// - Parameters:
+  ///   - title: The picker title
+  ///   - store: The store for the view.
+  ///   - allowNilSelection: Flag for if we allow a nil selection.
+  ///   - autoLoad: Flag for if we automatically load items when the view appears.
+  ///   - nilSelectionTitle: The title used for a row used to set the selection to `nil`.  Will default to `"None"` if not supplied.
+  ///   - row: Creates a view for an element.
+  public init(
+    _ title: String,
+    store: Store<LoadablePickerStateFor<Element, Failure>, LoadablePickerActionFor<Element, Failure>>,
+    allowNilSelection: Bool = false,
+    autoLoad: Bool = true,
+    nilSelectionTitle: String? = nil,
+    @ViewBuilder row: @escaping (Element) -> Row
+  ) where Element: Identifiable, Id == Element.ID {
+    self.init(
+      title,
+      id: \.id,
+      store: store,
+      allowNilSelection: allowNilSelection,
+      autoLoad: autoLoad,
+      nilSelectionTitle: nilSelectionTitle,
+      row: row
+    )
+  }
+}
+
 #if DEBUG
   import PreviewSupport
 
   let userPickerReducer = Reducer<
-    LoadablePickerState<User, LoadError>,
-    LoadablePickerAction<User, LoadError>,
+    LoadablePickerStateFor<User, LoadError>,
+    LoadablePickerActionFor<User, LoadError>,
     LoadableListViewEnvironmentFor<User, EmptyLoadRequest, LoadError>
   >.empty
     .loadablePicker(

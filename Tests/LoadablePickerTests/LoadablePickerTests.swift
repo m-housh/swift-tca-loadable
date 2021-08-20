@@ -31,8 +31,8 @@ final class LoadablePickerTests: XCTestCase {
   
   func test_loadable_picker_reducer_without_environment() {
     let reducer = Reducer<
-      LoadablePickerState<User, LoadError>,
-      LoadablePickerAction<User, LoadError>,
+      LoadablePickerStateFor<User, LoadError>,
+      LoadablePickerActionFor<User, LoadError>,
       Void
     >.empty
       .loadablePicker(state: \.self, action: /LoadablePickerAction.self)
@@ -129,7 +129,7 @@ final class LoadablePickerTests: XCTestCase {
 
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 struct TestPickerView: View {
-  let store: Store<LoadablePickerState<User, LoadError>, LoadablePickerAction<User, LoadError>>
+  let store: Store<LoadablePickerStateFor<User, LoadError>, LoadablePickerActionFor<User, LoadError>>
   var allowNilSelection: Bool = true
   var autoLoad: Bool = true
   
