@@ -77,7 +77,7 @@ extension LoadableListEnvironment {
 // MARK: - State
 
 /// Represents the state of a loadable list view.
-public struct LoadableListViewState<Element, Failure: Error> {
+public struct LoadableListState<Element, Failure: Error> {
 
   /// The current edit mode of the view.
   public var editMode: EditMode
@@ -98,19 +98,19 @@ public struct LoadableListViewState<Element, Failure: Error> {
     self.loadable = loadable
   }
 }
-extension LoadableListViewState: Equatable where Element: Equatable, Failure: Equatable {}
-public typealias LoadableListViewStateFor = LoadableListViewState
+extension LoadableListState: Equatable where Element: Equatable, Failure: Equatable {}
+public typealias LoadableListStateFor = LoadableListState
 
 // MARK: - Action
 
 /// Represents the actions that can be taken on a loadable list view.
-public enum LoadableListViewAction<Element, Failure: Error> {
+public enum LoadableListAction<Element, Failure: Error> {
   case editMode(EditModeAction)
   case list(ListAction)
   case loadable(LoadableAction<[Element], Failure>)
 }
-extension LoadableListViewAction: Equatable where Element: Equatable, Failure: Equatable {}
-public typealias LoadableListViewActionFor = LoadableListViewAction
+extension LoadableListAction: Equatable where Element: Equatable, Failure: Equatable {}
+public typealias LoadableListActionFor = LoadableListAction
 
 extension Reducer {
 
@@ -123,18 +123,18 @@ extension Reducer {
   ///   - state: The loadable list state.
   ///   - action: The loadable list actions.
   public func loadableList<Element, Failure>(
-    state: WritableKeyPath<State, LoadableListViewState<Element, Failure>>,
-    action: CasePath<Action, LoadableListViewAction<Element, Failure>>
+    state: WritableKeyPath<State, LoadableListState<Element, Failure>>,
+    action: CasePath<Action, LoadableListAction<Element, Failure>>
   ) -> Reducer {
     .combine(
       Reducer<
-        LoadableListViewState<Element, Failure>,
-        LoadableListViewAction<Element, Failure>,
+        LoadableListState<Element, Failure>,
+        LoadableListAction<Element, Failure>,
         Void
       >.empty
-        .editMode(state: \.editMode, action: /LoadableListViewAction.editMode)
-        .list(state: \.loadable.rawValue, action: /LoadableListViewAction.list)
-        .loadable(state: \.loadable, action: /LoadableListViewAction.loadable)
+        .editMode(state: \.editMode, action: /LoadableListAction.editMode)
+        .list(state: \.loadable.rawValue, action: /LoadableListAction.list)
+        .loadable(state: \.loadable, action: /LoadableListAction.loadable)
         .pullback(state: state, action: action, environment: { _ in }),
       self
     )
@@ -147,18 +147,18 @@ extension Reducer {
   ///   - action: The loadable list actions.
   ///   - environment: The loadable list environment.
   public func loadableList<Element, Failure>(
-    state: WritableKeyPath<State, LoadableListViewStateFor<Element, Failure>>,
-    action: CasePath<Action, LoadableListViewActionFor<Element, Failure>>,
+    state: WritableKeyPath<State, LoadableListStateFor<Element, Failure>>,
+    action: CasePath<Action, LoadableListActionFor<Element, Failure>>,
     environment: @escaping (Environment) -> LoadableListEnvironmentFor<Element, Failure>
   ) -> Reducer where Failure: Equatable, Failure: Error {
     .combine(
       Reducer<
-        LoadableListViewState<Element, Failure>,
-        LoadableListViewAction<Element, Failure>,
+        LoadableListState<Element, Failure>,
+        LoadableListAction<Element, Failure>,
         LoadableListEnvironment<Element, EmptyLoadRequest, Failure>
       >.empty
-        .loadableList(state: \.self, action: /LoadableListViewAction.self)
-        .loadable(state: \.loadable, action: /LoadableListViewAction.loadable, environment: { $0 })
+        .loadableList(state: \.self, action: /LoadableListAction.self)
+        .loadable(state: \.loadable, action: /LoadableListAction.loadable, environment: { $0 })
         .pullback(state: state, action: action, environment: environment),
       self
     )
@@ -226,7 +226,7 @@ extension Reducer {
 ///   }
 /// }
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-public struct LoadableListView<
+public struct LoadableList<
   Element: Equatable,
   Id: Hashable,
   Failure: Error,
@@ -234,7 +234,7 @@ public struct LoadableListView<
 >: View where Failure: Equatable {
 
   public let store:
-    Store<LoadableListViewStateFor<Element, Failure>, LoadableListViewActionFor<Element, Failure>>
+    Store<LoadableListStateFor<Element, Failure>, LoadableListActionFor<Element, Failure>>
 
   let autoLoad: Bool
   let id: KeyPath<Element, Id>
@@ -249,7 +249,7 @@ public struct LoadableListView<
   ///   - row: The view builder for an individual row in the list.
   public init(
     store: Store<
-      LoadableListViewStateFor<Element, Failure>, LoadableListViewActionFor<Element, Failure>
+      LoadableListStateFor<Element, Failure>, LoadableListActionFor<Element, Failure>
     >,
     autoLoad: Bool = true,
     id: KeyPath<Element, Id>,
@@ -279,14 +279,14 @@ public struct LoadableListView<
         }
       }
       .editMode(
-        store.scope(state: \.editMode, action: LoadableListViewAction.editMode)
+        store.scope(state: \.editMode, action: LoadableListAction.editMode)
       )
     }
   }
 }
 
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
-extension LoadableListView where Element: Identifiable, Id == Element.ID {
+extension LoadableList where Element: Identifiable, Id == Element.ID {
   /// Create a new loadable list view.
   ///
   /// - Parameters:
@@ -295,7 +295,7 @@ extension LoadableListView where Element: Identifiable, Id == Element.ID {
   ///   - row: The view builder for an individual row in the list.
   public init(
     store: Store<
-      LoadableListViewStateFor<Element, Failure>, LoadableListViewActionFor<Element, Failure>
+      LoadableListStateFor<Element, Failure>, LoadableListActionFor<Element, Failure>
     >,
     autoLoad: Bool = true,
     @ViewBuilder row: @escaping (Element) -> Row
@@ -328,30 +328,30 @@ extension LoadableListView where Element: Identifiable, Id == Element.ID {
   }
 
   let usersReducer = Reducer<
-    LoadableListViewStateFor<User, LoadError>,
-    LoadableListViewActionFor<User, LoadError>,
+    LoadableListStateFor<User, LoadError>,
+    LoadableListActionFor<User, LoadError>,
     LoadableListEnvironmentFor<User, LoadError>
   >.empty
     .loadableList(
       state: \.self,
-      action: /LoadableListViewActionFor.self,
+      action: /LoadableListActionFor.self,
       environment: { $0 }
     )
 
   @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
   struct LoadableListViewPreviewWithEditModeButton: View {
     let store:
-      Store<LoadableListViewStateFor<User, LoadError>, LoadableListViewActionFor<User, LoadError>>
+      Store<LoadableListStateFor<User, LoadError>, LoadableListActionFor<User, LoadError>>
 
     var body: some View {
       NavigationView {
-        LoadableListView(store: store, autoLoad: true) { user in
+        LoadableList(store: store, autoLoad: true) { user in
           Text(user.name)
         }
         .toolbar {
           ToolbarItemGroup(placement: .confirmationAction) {
             EditButton(
-              store: store.scope(state: \.editMode, action: LoadableListViewAction.editMode)
+              store: store.scope(state: \.editMode, action: LoadableListAction.editMode)
             )
           }
         }
