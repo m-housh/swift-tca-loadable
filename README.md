@@ -35,7 +35,8 @@ view type.
 
 ### LoadableView
 
-We will start by creating an environment that implements the `LoadableEnvironment` protocol.
+We will start by creating an environment that implements the `LoadableEnvironmentRepresentable` protocol, you
+could also use the concrete `LoadableEnvironment` implementation as well.
 
 ```swift
 import ComposableArchitecture
@@ -151,6 +152,8 @@ views for the `notRequested`, `isLoading`, or `failed` states.  It uses the defa
 
 It does provide `delete`, `editMode`, and `move` functionality for the list out of the box.
 
+First we will create some supporting type that we want to load / view in the list
+
 ```swift
 struct User: Equatable, Identifiable {
   let id: UUID = UUID()
@@ -163,6 +166,11 @@ extension User {
   static let blobJr = User(name: "blob-jr")
   static let blobSr = User(name: "blob-sr")
 }
+```
+
+Next we will create the state, action, and environment for our list view.
+
+```swift
 
 struct AppState: Equatable {
   var users: LoadableListStateFor<User, LoadError>
@@ -191,6 +199,11 @@ let appReducer = Reducer<AppState, AppAction, LoadableListEnvironmentFor<User, L
     action: /AppAction.users,
     environment: .live
   )
+```
+
+And now we can create a our loadable list view.
+
+```swift
   
 struct ContentView: View {
   let store: Store<AppState, AppAction>
@@ -220,6 +233,147 @@ struct ContentView: View {
   }
 }
 
+```
+
+### LoadablePicker
+
+There is also a `LoadablePicker` view for loading content into a picker.  This view also does not support
+customizing the different states of the loadable items and uses the default `ProgressView`.
+
+```swift
+struct AppState: Equatable {
+  var userPicker: LoadablePickerStateFor<User, LoadError> = .init()
+}
+
+enum AppAction: Equatable {
+  case userPicker(LoadablePickerActionFor<User, LoadError>)
+}
+
+let appReducer = Reducer<AppState, AppAction, LoadableListEnvironmentFor<User, LoadError>>
+  .empty
+  .loadablePicker(
+    state: \.userPicker,
+    action: /AppAction.userPicker,
+    environment: { $0 }
+  )
+ 
+struct ContentView: View {
+  
+  let store: Store<AppState, AppAction>
+  
+  var body: some View {
+    UserPicker(store: store.scope(state: \.userPicker, action: AppAction.userPicker)
+  }
+  
+  struct UserPicker: View {
+    let store: Store<LoadablePickerStateFor<User, LoadError>, LoadablePickerActionFor<User, LoadError>>
+    
+    var body: some View {
+      LoadablePicker(
+        "User",
+        store: store,
+        allowNilSelection: true
+      ) { user in 
+        Text(user.name)
+      }
+    }
+  }
+}
+
+```
+
+### LoadableForEach
+
+We also provide a `LoadableForEach` view that uses `ForEachStore` under the hood to give access to a store
+for each element of the list view.  This view also supports the `delete`, `editMode`, and `move` actions
+similar to a `LoadableList` view.  Like the other views this does not support customization of the views for
+different states of the loadable items.
+
+We will create our state, action, and environment.
+
+```swift
+
+enum UserAction: Equatable {
+  case binding(BindingAction<User>)
+}
+
+let userReducer = Reducer<User, UserAction, Void>
+  .empty
+  .binding(action: /UserAction.binding)
+
+struct AppState: Equatable {
+  var users: LoadableForEachStateFor<User, LoadError> = .init()
+}
+
+enum AppAction: Equatable {
+  case users(LoadableForEachActionFor<User, UserAction, LoadError>)
+}
+
+extension LoadableForEachEnvironment where Element == User, Id == User.ID, LoadRequest == EmptyLoadRequest, Failure == LoadError {
+
+  static let live = Self.init(
+    load: { _ in 
+      Just([User.blob, .blobJr, .blobSr])
+        .delay(for: .seconds(1), scheduler: DispatchQueue.main)
+        .setFailureType(to: LoadError.self)
+        .eraseToEffect()
+    },
+    mainQueue: .main
+  )
+}
+
+let appReducer = Reducer<AppState, AppAction, LoadableForEachEnvironmentFor<User, EmptyLoadRequest, LoadError>>
+  .empty
+  .loadableForEach(
+    state: \.users,
+    action: /AppAction.users,
+    environment: { $0 },
+    forEach: userReducer
+  )
+
+```
+
+Next we will create our loadable for each view.
+
+```swift
+
+struct ContentView: View {
+  let store: Store<AppState, AppAction>
+  
+  var body: some View {
+    UsersView(store: store.scope(state: \.users, action: AppAction.users)
+  }
+  
+  struct UsersView: View {
+    let store = Store<LoadableForEachStateFor<User, LoadError>, LoadableForEachActionFor<User, UserAction, LoadError>>
+    
+    var body: some View {
+      LoadableForEach(store) { userStore in 
+        WithViewStore(userStore) { userViewStore in 
+          HStack {
+            Text(userViewStore.name)
+            Spacer()
+            Toggle(
+              "Favorite",
+              isOn: userViewStore.binding(
+                keyPath: \.isFavorite,
+                action: UserAction.binding
+              )
+            )
+          }
+        }
+      }
+      .toolbar {
+        // Add edit mode button
+        ToolbarItemGroup(placement: .confirmationAction) {
+          EditButton(
+            store: store.scope(state: \.editMode, action: LoadableForEachAction.editMode)
+          )
+        }
+      }
+    }
+  }
+}
 ```
 
 ![Example Screenshot](https://github.com/m-housh/TCALoadable/blob/main/TCALoadable_Example.gif)
