@@ -40,7 +40,7 @@ could also use the concrete `LoadableEnvironment` implementation as well.
 
 ```swift
 import ComposableArchitecture
-import TCALoadable
+import LoadableView
 import Combine
 import SwiftUI
 
