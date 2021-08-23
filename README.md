@@ -11,7 +11,7 @@ let package = Package(
   ...
   dependencies: [
     ...
-    .package(url: "https://github.com/m-housh/swift-tca-loadable.git", from: "1.0.0")
+    .package(url: "https://github.com/m-housh/swift-tca-loadable.git", from: "0.2.0")
   ]
   ...
 )
@@ -21,7 +21,7 @@ let package = Package(
 ## Notes
 ----------
 
-Version 1.0.0 brings breaking changes from the previous 0.1.0 versions.  Now we are using `CaseLet` and
+Version 0.2.0 brings breaking changes from the previous 0.1.0 versions.  Now we are using `CaseLet` and
 `SwitchStore` under the hood, so that there is access to a `Store` in all of the different view states
 of a `Loadable` item.
 
