@@ -28,7 +28,7 @@ of a `Loadable` item.
 ## Basic Usage
 ----------------
 
-This package provides several loadable view to use or to create a more specific view for your use case.
+This package provides several loadable view types to use or to help create a more specific view for your use case.
 The most versatile / flexible view is a `LoadableView`.  It allows customization of the views for all the states
 a `Loadable` item can be in.  We also provide ways to enhance a reducer with the default functionality for each
 view type.
@@ -249,7 +249,7 @@ enum AppAction: Equatable {
   case userPicker(LoadablePickerActionFor<User, LoadError>)
 }
 
-let appReducer = Reducer<AppState, AppAction, LoadableListEnvironmentFor<User, LoadError>>
+let appReducer = Reducer<AppState, AppAction, LoadablePickerEnvironmentFor<User, LoadError>>
   .empty
   .loadablePicker(
     state: \.userPicker,
@@ -375,5 +375,10 @@ struct ContentView: View {
   }
 }
 ```
+
+## Documentation
+---------------------
+
+You can view the api documentation on the [wiki](https://github.com/m-housh/swift-tca-loadable/wiki) page.
 
 ![Example Screenshot](https://github.com/m-housh/TCALoadable/blob/main/TCALoadable_Example.gif)

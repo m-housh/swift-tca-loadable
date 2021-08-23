@@ -103,7 +103,7 @@ final class LoadableListTests: XCTestCase {
   
   func test_loadable_list_while_not_editing() {
     
-    let view = LoadableView(
+    let view = LoadableList(
       store: .init(
         initialState: .init(),
         reducer: usersReducer,
@@ -124,7 +124,7 @@ final class LoadableListTests: XCTestCase {
   
   func test_loadable_list_while_editing() {
     
-    let view = LoadableView(
+    let view = LoadableList(
       store: .init(
         initialState: .init(editMode: .active),
         reducer: usersReducer,
