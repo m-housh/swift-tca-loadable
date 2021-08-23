@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main 
+      - develop
+    pull_request:
+      branches:
+          - '*'
+
+jobs:
+  build:
+    name: MacOS
+    runs-on: macOS-latest
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_13.app/Contents/Developer
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run swift tests
+      run: make test-swift

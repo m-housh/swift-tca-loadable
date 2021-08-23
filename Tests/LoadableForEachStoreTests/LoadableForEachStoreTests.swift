@@ -46,6 +46,7 @@ final class LoadableForEachStoreTests: XCTestCase {
     
     wait(for: [expectation], timeout: 1)
     XCTAssertEqual(loaded, IdentifiedArrayOf<User>.init(uniqueElements: [User].users))
+    cancellable.cancel()
   }
   
   func test_edit_mode_actions() {
