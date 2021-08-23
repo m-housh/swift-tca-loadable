@@ -1,3 +1,5 @@
+[![CI](https://github.com/m-housh/swift-tca-loadable/actions/workflows/ci.yml/badge.svg)](https://github.com/m-housh/swift-tca-loadable/actions/workflows/ci.yml)
+
 # swift-tca-loadable
 
 A swift package for handling loadable items using [The Composable Architecture](https://github.com/pointfreeco/swift-composable-architecture).
