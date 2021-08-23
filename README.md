@@ -1,4 +1,4 @@
-# TCALoadable
+# swift-tca-loadable
 
 A swift package for handling loadable items using [The Composable Architecture](https://github.com/pointfreeco/swift-composable-architecture).
 
