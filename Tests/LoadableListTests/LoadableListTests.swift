@@ -103,7 +103,7 @@ final class LoadableListTests: XCTestCase {
   
   func test_loadable_list_while_not_editing() {
     
-    let view = LoadableListView(
+    let view = LoadableList(
       store: .init(
         initialState: .init(),
         reducer: usersReducer,
@@ -124,7 +124,7 @@ final class LoadableListTests: XCTestCase {
   
   func test_loadable_list_while_editing() {
     
-    let view = LoadableListView(
+    let view = LoadableList(
       store: .init(
         initialState: .init(editMode: .active),
         reducer: usersReducer,
@@ -167,14 +167,14 @@ extension LoadableListEnvironment where Element == User, LoadRequest == TestUser
 }
 
 struct UserStateWithCustomRequesState: Equatable {
-  var list: LoadableListViewState<User, LoadError>
+  var list: LoadableListState<User, LoadError>
   var nameQuery: String?
 }
 
 
 let userReducerWithCustomRequest = Reducer<
   UserStateWithCustomRequesState,
-  LoadableListViewAction<User, LoadError>,
+  LoadableListAction<User, LoadError>,
   LoadableListEnvironment<User, TestUserLoadRequest, LoadError>
 > { state, action, environment in
   switch action {
@@ -193,7 +193,7 @@ let userReducerWithCustomRequest = Reducer<
 }
 .loadableList(
   state: \.list,
-  action: /LoadableListViewAction.self
+  action: /LoadableListAction.self
 //  environment: { $0 }
 )
 

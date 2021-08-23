@@ -3,8 +3,77 @@ import ComposableArchitecture
 @_exported import LoadableView
 import SwiftUI
 
-@_exported import struct LoadableList.LoadableListEnvironment
-@_exported import struct LoadableList.LoadableListEnvironmentFor
+// MARK: - Environment
+
+/// Represents the environment for a loadable list.
+public struct LoadablePickerEnvironment<Element, LoadRequest, Failure: Error> {
+
+  /// Load the items.
+  public var load: (LoadRequest) -> Effect<[Element], Failure>
+
+  /// The main dispatch queue.
+  public var mainQueue: AnySchedulerOf<DispatchQueue>
+
+  /// Create a new environment.
+  ///
+  /// - Parameters:
+  ///   - load: Load the items.
+  ///   - mainQueue: The main dispatch queue.
+  public init(
+    load: @escaping (LoadRequest) -> Effect<[Element], Failure>,
+    mainQueue: AnySchedulerOf<DispatchQueue>
+  ) {
+    self.load = load
+    self.mainQueue = mainQueue
+  }
+}
+extension LoadablePickerEnvironment: LoadableEnvironmentRepresentable {}
+public typealias LoadablePickerEnvironmentFor<Element, Failure: Error> = LoadablePickerEnvironment<
+  Element, EmptyLoadRequest, Failure
+>
+
+// MARK: - LoadableEnvironmentRepresentable Support
+extension LoadablePickerEnvironment {
+
+  /// Wraps a `LoadableEnvironmentRepresentable` in a `LoadablePickerEnvironment`
+  ///
+  /// - Parameters:
+  ///   - environment: The loadable environment to transform into a list environment.
+  public init<Environment: LoadableEnvironmentRepresentable>(
+    environment loadableEnvironment: Environment
+  )
+  where
+    Environment.LoadedValue == [Element],
+    Environment.LoadRequest == LoadRequest,
+    Environment.Failure == Failure
+  {
+    self.init(load: loadableEnvironment.load, mainQueue: loadableEnvironment.mainQueue)
+  }
+}
+
+#if DEBUG
+  extension LoadablePickerEnvironment {
+
+    /// A concrete `LoadablePickerEnvironment` that fails when used.
+    public static var failing: Self {
+      .init(
+        load: { _ in .failing("\(Self.self).load is unimplemented") },
+        mainQueue: .failing("\(Self.self).mainQueue is unimplemented")
+      )
+    }
+  }
+#endif
+
+extension LoadablePickerEnvironment {
+
+  /// A concrete `LoadablePickerEnvironment` that does nothing.
+  public static var noop: Self {
+    .init(
+      load: { _ in .none },
+      mainQueue: .main
+    )
+  }
+}
 
 // MARK: - State
 
@@ -90,7 +159,7 @@ extension Reducer {
   public func loadablePicker<Element, Id: Hashable, Failure: Error>(
     state: WritableKeyPath<State, LoadablePickerState<Element, Id, Failure>>,
     action: CasePath<Action, LoadablePickerAction<Element, Id, Failure>>,
-    environment: @escaping (Environment) -> LoadableListEnvironment<
+    environment: @escaping (Environment) -> LoadablePickerEnvironment<
       Element, EmptyLoadRequest, Failure
     >
   ) -> Reducer {
@@ -98,7 +167,7 @@ extension Reducer {
       Reducer<
         LoadablePickerState<Element, Id, Failure>,
         LoadablePickerAction<Element, Id, Failure>,
-        LoadableListEnvironment<Element, EmptyLoadRequest, Failure>
+        LoadablePickerEnvironment<Element, EmptyLoadRequest, Failure>
       >.empty
         .binding(action: /LoadablePickerAction.binding)
         .loadable(state: \.loadable, action: /LoadablePickerAction.loadable, environment: { $0 })
@@ -142,7 +211,7 @@ extension Reducer {
 /// let usersPickerReducer = Reducer<
 ///    LoadablePickerState<User, LoadError>,
 ///    LoadablePickerAction<User, LoadError>,
-///    LoadableListViewEnvironmentFor<User, EmptyLoadRequest, LoadError>
+///    LoadablePickerEnvironmentFor<User, LoadError>
 /// >.empty
 ///   .loadablePicker(
 ///      state: \.self,
@@ -350,12 +419,13 @@ extension LoadablePicker {
 }
 
 #if DEBUG
+  import LoadableList
   import PreviewSupport
 
   let userPickerReducer = Reducer<
     LoadablePickerStateFor<User, LoadError>,
     LoadablePickerActionFor<User, LoadError>,
-    LoadableListEnvironmentFor<User, LoadError>
+    LoadablePickerEnvironmentFor<User, LoadError>
   >.empty
     .loadablePicker(
       state: \.self,
@@ -373,7 +443,7 @@ extension LoadablePicker {
             store: .init(
               initialState: .init(),
               reducer: userPickerReducer,
-              environment: .users
+              environment: .init(environment: LoadableListEnvironment.users)
             ),
             allowNilSelection: true
           ) { user in
@@ -388,7 +458,7 @@ extension LoadablePicker {
             store: .init(
               initialState: .init(),
               reducer: userPickerReducer,
-              environment: .users
+              environment: .init(environment: LoadableListEnvironment.users)
             ),
             allowNilSelection: false
           ) { user in
