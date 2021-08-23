@@ -340,8 +340,7 @@ extension LoadableList where Element: Identifiable, Id == Element.ID {
 
   @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
   struct LoadableListViewPreviewWithEditModeButton: View {
-    let store:
-      Store<LoadableListStateFor<User, LoadError>, LoadableListActionFor<User, LoadError>>
+    let store: Store<LoadableListStateFor<User, LoadError>, LoadableListActionFor<User, LoadError>>
 
     var body: some View {
       NavigationView {
