@@ -34,6 +34,6 @@ let package = Package(
       dependencies: [
         "Loadable"
       ]
-    ),
+    )
   ]
 )
