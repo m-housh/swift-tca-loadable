@@ -3,6 +3,10 @@
 # swift-tca-loadable
 
 A swift package for handling loadable items using [The Composable Architecture](https://github.com/pointfreeco/swift-composable-architecture).
+ 
+ - [Installation](#installation)
+ - [Basic Usage](#basic-usage)
+ - [Documenation](#documenation)
 
 ## Installation
 -------------------
@@ -122,6 +126,7 @@ struct ContentView: View {
 ## Documentation
 ---------------------
 
-You can view the api documentation on the [wiki](https://github.com/m-housh/swift-tca-loadable/wiki) page.
+You can view the api documentation on the 
+[here](https://m-housh.github.io/swift-tca-loadable/documentation/loadable/).
 
 ![Example Screenshot](https://github.com/m-housh/TCALoadable/blob/main/TCALoadable_Example.gif)
