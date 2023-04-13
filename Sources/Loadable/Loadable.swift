@@ -3,6 +3,9 @@ import Foundation
 
 /// A property wrapper that wraps an item in a ``LoadingState`` that can be loaded from a remote process.
 ///
+/// `@LoadableState var int: Int?`
+///
+/// See ``LoadableView`` for a more concrete usage.
 ///
 @dynamicMemberLookup
 @propertyWrapper
@@ -53,6 +56,7 @@ public struct LoadableState<Value> {
     }
   }
 
+  /// Access to the ``LoadingState``.
   public var projectedValue: LoadingState<Value> {
     get { self.loadingState }
     set { self.loadingState = newValue }
@@ -146,7 +150,7 @@ extension LoadingState: Encodable where Value: Encodable {
 /// Represents the actions for a loadable value.
 public enum LoadingAction<Value> {
 
-  /// Load the value from a remote source.
+  /// Represents when the value should be loaded from a remote source.
   case load
 
   /// Receive a loaded value from a remote source.
