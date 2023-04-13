@@ -1,22 +1,38 @@
 name: Documentation
 
-on: [push]
+on:
+  release:
+    types:
+      - published
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Generate Documentation
-        uses: SwiftDocOrg/swift-doc@master
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Build DocC
+        run: make build-documentation
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v1
         with:
-          inputs: "Sources"
-          module-name: swift-tca-loadable-Package
-          output: "Documentation"
-      - name: Upload Documentation to Wiki
-        uses: SwiftDocOrg/github-wiki-publish-action@v1
-        with:
-          path: "Documentation"
-        env:
-          GH_PERSONAL_ACCESS_TOKEN: ${{ secrets.GH_TOKEN }}
-
+          path: 'docs'
+      - name: Deploy to Github Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
