@@ -158,7 +158,7 @@ public enum LoadingAction<Value> {
 }
 extension LoadingAction: Equatable where Value: Equatable {}
 
-extension Reducer {
+extension ReducerProtocol {
 
   /// Enhances a reducer with the default ``LoadingAction`` implementations.
   ///
@@ -188,7 +188,7 @@ extension Reducer {
 ///
 /// This should not be used directly, instead use the ``Reducer/loadable``.
 ///
-public struct _LoadableReducer<Parent: Reducer, Value: Equatable>: Reducer {
+public struct _LoadableReducer<Parent: ReducerProtocol, Value: Equatable>: ReducerProtocol {
 
   @usableFromInline
   let parent: Parent
@@ -203,7 +203,7 @@ public struct _LoadableReducer<Parent: Reducer, Value: Equatable>: Reducer {
   public func reduce(
     into state: inout Parent.State,
     action: Parent.Action
-  ) -> Effect<Parent.Action> {
+  ) -> EffectTask<Parent.Action> {
     let parentEffects = parent.reduce(into: &state, action: action)
     if let loadingAction = toLoadableAction.extract(from: action) {
       switch loadingAction {

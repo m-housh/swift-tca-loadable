@@ -15,7 +15,7 @@ struct User: Codable, Identifiable, Equatable {
   }
 }
 
-struct EnvisionedUsage: Reducer {
+struct EnvisionedUsage: ReducerProtocol {
   struct State: Codable, Equatable {
     @LoadableState var user: User? = nil
   }
@@ -24,7 +24,7 @@ struct EnvisionedUsage: Reducer {
     case user(LoadingAction<User>)
   }
 
-  var body: some ReducerOf<Self> {
+  var body: some ReducerProtocolOf<Self> {
     EmptyReducer()
       .loadable(state: \.$user, action: /Action.user)
   }
