@@ -201,39 +201,9 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "LoadableForEachStoreTests"
-               BuildableName = "LoadableForEachStoreTests"
-               BlueprintName = "LoadableForEachStoreTests"
-               ReferencedContainer = "container:">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "LoadableListTests"
-               BuildableName = "LoadableListTests"
-               BlueprintName = "LoadableListTests"
-               ReferencedContainer = "container:">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "LoadablePickerTests"
-               BuildableName = "LoadablePickerTests"
-               BlueprintName = "LoadablePickerTests"
-               ReferencedContainer = "container:">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "TCALoadableTests"
-               BuildableName = "TCALoadableTests"
-               BlueprintName = "TCALoadableTests"
+               BlueprintIdentifier = "LoadableTests"
+               BuildableName = "LoadableTests"
+               BlueprintName = "LoadableTests"
                ReferencedContainer = "container:">
             </BuildableReference>
          </TestableReference>

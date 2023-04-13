@@ -1,4 +1,4 @@
-// swift-tools-version:5.1
+// swift-tools-version:5.7
 
 import PackageDescription
 
@@ -11,101 +11,28 @@ let package = Package(
     .watchOS(.v6),
   ],
   products: [
-    .library(name: "EditMode", targets: ["EditModeModifier"]),
-    .library(name: "EditModeShim", targets: ["EditModeShim"]),
-    .library(name: "ListAction", targets: ["ListAction"]),
-    .library(name: "LoadableForEachStore", targets: ["LoadableForEachStore"]),
-    .library(name: "LoadableList", targets: ["LoadableList"]),
-    .library(name: "LoadablePicker", targets: ["LoadablePicker"]),
-    .library(name: "LoadableView", targets: ["LoadableView"]),
-    .library(name: "PreviewSupport", targets: ["PreviewSupport"]),
+    .library(name: "Loadable", targets: ["Loadable"]),
   ],
   dependencies: [
     .package(
-      url: "https://github.com/pointfreeco/swift-composable-architecture.git", from: "0.8.0"),
-    .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", from: "1.8.2"),
+      url: "https://github.com/pointfreeco/swift-composable-architecture.git",
+      branch: "prerelease/1.0"
+    ),
+    .package(url: "https://github.com/pointfreeco/swift-case-paths.git", from: "0.14.0"),
+    .package(url: "https://github.com/apple/swift-docc-plugin.git", from: "1.0.0"),
   ],
   targets: [
     .target(
-      name: "EditModeModifier",
+      name: "Loadable",
       dependencies: [
-        "EditModeShim",
-        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
-      ]
-    ),
-    .target(
-      name: "EditModeShim",
-      dependencies: []
-    ),
-    .target(
-      name: "ListAction",
-      dependencies: [
-        .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
-      ]
-    ),
-    .target(
-      name: "LoadableForEachStore",
-      dependencies: [
-        "LoadableList",
-        "PreviewSupport",
-        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
-      ]
-    ),
-    .testTarget(
-      name: "LoadableForEachStoreTests",
-      dependencies: [
-        "LoadableForEachStore",
-        "SnapshotTesting",
-      ]
-    ),
-    .target(
-      name: "LoadableList",
-      dependencies: [
-        "EditModeModifier",
-        "ListAction",
-        "LoadableView",
-        "PreviewSupport",
-        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
-      ]
-    ),
-    .testTarget(
-      name: "LoadableListTests",
-      dependencies: [
-        "LoadableList",
-        "SnapshotTesting",
-      ]
-    ),
-    .target(
-      name: "LoadablePicker",
-      dependencies: [
-        "LoadableList",
-        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
-      ]
-    ),
-    .testTarget(
-      name: "LoadablePickerTests",
-      dependencies: [
-        "LoadablePicker",
-        "SnapshotTesting",
-      ]
-    ),
-    .target(
-      name: "LoadableView",
-      dependencies: [
-        .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
-      ]
-    ),
-    .target(
-      name: "PreviewSupport",
-      dependencies: [
+        .product(name: "CasePaths", package: "swift-case-paths"),
         .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
       ]
     ),
     .testTarget(
-      name: "TCALoadableTests",
+      name: "LoadableTests",
       dependencies: [
-        "LoadableView",
-        "SnapshotTesting",
+        "Loadable",
       ]
     ),
   ]

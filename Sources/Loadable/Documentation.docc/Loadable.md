@@ -1,8 +1,6 @@
-[![CI](https://github.com/m-housh/swift-tca-loadable/actions/workflows/ci.yml/badge.svg)](https://github.com/m-housh/swift-tca-loadable/actions/workflows/ci.yml)
+# ``Loadable``
 
-# swift-tca-loadable
-
-A swift package for handling loadable items using [The Composable Architecture](https://github.com/pointfreeco/swift-composable-architecture).
+A swift package for handling loadable items using `The Composable Architecture`.
 
 ## Installation
 -------------------
@@ -25,22 +23,22 @@ let package = Package(
 
 Version 0.3.0 brings breaking changes from the previous versions. Version `0.3.0` updates to using the
 `ReducerProtocol` from the composable architecture.
- 
+
 ## Basic Usage
 ----------------
 
 This package provides a `LoadableView` and several types that are used inside of your `Reducer`
 implementations.
- 
+
 ### LoadableView
 
- Below shows an example `Reducer` and uses the `LoadableView`.
+Below shows an example `Reducer` and uses the `LoadableView`.
 
 ```swift
 import ComposableArchitecture
 import Loadable
 import SwiftUI
- 
+
 struct App: Reducer {
   struct State: Equatable {
     @LoadableState var int: Int?
@@ -51,7 +49,7 @@ struct App: Reducer {
   }
 
   @Dependency(\.continuousClock) var clock;
-  
+
   var body: some ReducerOf<Self> {
     Reduce { state, action in
       switch action {
@@ -101,7 +99,7 @@ The above uses the default `ProgressView`'s when the items are in a `notRequeste
 struct ContentView: View {
 
   let store: StoreOf<App>
-    
+
   var body: some View {
     LoadableView(
       store: store.scope(state: \.$score, action: App.Action.int)
@@ -118,10 +116,10 @@ struct ContentView: View {
   }
 }
 ```
- 
-## Documentation
----------------------
 
-You can view the api documentation on the [wiki](https://github.com/m-housh/swift-tca-loadable/wiki) page.
+## Topics
 
-![Example Screenshot](https://github.com/m-housh/TCALoadable/blob/main/TCALoadable_Example.gif)
+- ``LoadableState``
+- ``LoadingState``
+- ``LoadingAction``
+- ``LoadableView``
