@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Install Swift Format
+        run: brew install swift-format
       - name: Run swift-format.
         run: make format
       - uses: stefanzweifel/git-auto-commit-action@v4
