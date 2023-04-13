@@ -58,9 +58,9 @@ final class TCA_LoadableTests: XCTestCase {
   func test_codable() throws {
     let json = """
     {
-      "user": {
-        "id": "00000000-0000-0000-0000-000000000000",
-        "name": "Blob"
+      "user" : {
+        "id" : "00000000-0000-0000-0000-000000000000",
+        "name" : "Blob"
       }
     }
     """
