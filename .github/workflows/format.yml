@@ -8,7 +8,7 @@ on:
 jobs:
   swift_format:
     name: swift-format
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
       - name: Install Swift Format
