@@ -55,7 +55,7 @@ import SwiftUI
 //}
 
 @available(iOS 16, *)
-struct App: Reducer {
+struct App: ReducerProtocol {
   struct State: Equatable {
     @LoadableState var int: Int?
   }
@@ -65,7 +65,7 @@ struct App: Reducer {
   }
 
   @Dependency(\.continuousClock) var clock;
-  var body: some ReducerOf<Self> {
+  var body: some ReducerProtocolOf<Self> {
     Reduce { state, action in
       switch action {
       case .int(.load):
