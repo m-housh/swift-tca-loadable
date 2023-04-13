@@ -84,13 +84,13 @@ public struct LoadableView<
 >: View {
 
   private let autoload: Autoload
-  
+
   private let isLoading: (Store<State?, LoadingAction<State>>) -> IsLoading
-  
+
   private let loaded: (Store<State, LoadingAction<State>>) -> Loaded
-  
+
   private let notRequested: () -> NotRequested
-  
+
   private let store: Store<LoadingState<State>, LoadingAction<State>>
 
   /// Create a ``LoadableView`` without any default view implementations for the ``LoadingState``.
@@ -164,16 +164,16 @@ public struct LoadableView<
 /// Represents when / if we should call the ``LoadingAction/load`` when a view appears.
 ///
 public enum Autoload: Equatable {
-  
+
   /// Always call load when a view appears.
   case always
-  
+
   /// Never call load when a view appears.
   case never
-  
+
   /// Only call load when the state is ``LoadingState/notRequested``.
   case whenNotRequested
-  
+
   func shouldLoad<V: Equatable>(_ state: LoadingState<V>) -> Bool {
     switch self {
     case .always:
@@ -275,8 +275,7 @@ where
     autoload: Autoload = .whenNotRequested,
     @ViewBuilder loaded: @escaping (Store<State, LoadingAction<State>>) -> Loaded
   )
-  where IsLoading == HorizontalIsLoadingView<State, LoadingAction<State>, NotRequested, Loaded>
-  {
+  where IsLoading == HorizontalIsLoadingView<State, LoadingAction<State>, NotRequested, Loaded> {
     let notRequested = { ProgressView() }
     self.autoload = autoload
     self.store = store
@@ -293,41 +292,42 @@ where
 }
 
 #if DEBUG
-@available(iOS 16, macOS 13, *)
-struct Preview: Reducer {
-  struct State: Equatable {
-    @LoadableState var int: Int?
-  }
-
-  enum Action: Equatable {
-    case int(LoadingAction<Int>)
-  }
-
-  @Dependency(\.continuousClock) var clock;
-
-  var body: some ReducerOf<Self> {
-    Reduce { state, action in
-      switch action {
-      case .int(.load):
-        return .task {
-          await .int(.receiveLoaded(
-            TaskResult {
-              try await clock.sleep(for: .milliseconds(100))
-              return 42
-            }
-          ))
-        }
-      case .int:
-        return .none
-      }
+  @available(iOS 16, macOS 13, *)
+  struct Preview: Reducer {
+    struct State: Equatable {
+      @LoadableState var int: Int?
     }
-    .loadable(state: \.$int, action: /Action.int)
-  }
-}
 
-struct LoadableView_Previews: PreviewProvider {
-  static var previews: some View {
-    Text("Hello, world!")
+    enum Action: Equatable {
+      case int(LoadingAction<Int>)
+    }
+
+    @Dependency(\.continuousClock) var clock
+
+    var body: some ReducerOf<Self> {
+      Reduce { state, action in
+        switch action {
+        case .int(.load):
+          return .task {
+            await .int(
+              .receiveLoaded(
+                TaskResult {
+                  try await clock.sleep(for: .milliseconds(100))
+                  return 42
+                }
+              ))
+          }
+        case .int:
+          return .none
+        }
+      }
+      .loadable(state: \.$int, action: /Action.int)
+    }
   }
-}
+
+  struct LoadableView_Previews: PreviewProvider {
+    static var previews: some View {
+      Text("Hello, world!")
+    }
+  }
 #endif

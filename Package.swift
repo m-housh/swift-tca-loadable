@@ -11,7 +11,7 @@ let package = Package(
     .watchOS(.v6),
   ],
   products: [
-    .library(name: "Loadable", targets: ["Loadable"]),
+    .library(name: "Loadable", targets: ["Loadable"])
   ],
   dependencies: [
     .package(
@@ -26,13 +26,13 @@ let package = Package(
       name: "Loadable",
       dependencies: [
         .product(name: "CasePaths", package: "swift-case-paths"),
-        .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
+        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
       ]
     ),
     .testTarget(
       name: "LoadableTests",
       dependencies: [
-        "Loadable",
+        "Loadable"
       ]
     ),
   ]

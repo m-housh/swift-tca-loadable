@@ -47,7 +47,7 @@ public struct LoadableState<Value> {
     _modify {
       var state = self.boxedValue.first ?? .notRequested
       yield &state
-      switch (self.boxedValue.isEmpty) {
+      switch self.boxedValue.isEmpty {
       case (true):
         self.boxedValue.insert(state, at: 0)
       case (false):
@@ -69,7 +69,7 @@ public struct LoadableState<Value> {
     get { self.wrappedValue?[keyPath: keyPath] }
     set {
       guard self.wrappedValue != nil,
-              let newValue
+        let newValue
       else { return }
       self.wrappedValue![keyPath: keyPath] = newValue
     }
@@ -79,8 +79,8 @@ public struct LoadableState<Value> {
     self.wrappedValue.map(StableID.init(base:))
   }
 }
-extension LoadableState: Equatable where Value: Equatable { }
-extension LoadableState: Hashable where Value: Hashable { }
+extension LoadableState: Equatable where Value: Equatable {}
+extension LoadableState: Hashable where Value: Hashable {}
 
 extension LoadableState: Decodable where Value: Decodable {
   public init(from decoder: Decoder) throws {
@@ -123,8 +123,8 @@ public enum LoadingState<Value> {
     }
   }
 }
-extension LoadingState: Equatable where Value: Equatable { }
-extension LoadingState: Hashable where Value: Hashable { }
+extension LoadingState: Equatable where Value: Equatable {}
+extension LoadingState: Hashable where Value: Hashable {}
 extension LoadingState: Decodable where Value: Decodable {
   public init(from decoder: Decoder) throws {
     do {
@@ -156,7 +156,7 @@ public enum LoadingAction<Value> {
   /// Receive a loaded value from a remote source.
   case receiveLoaded(TaskResult<Value>)
 }
-extension LoadingAction: Equatable where Value: Equatable { }
+extension LoadingAction: Equatable where Value: Equatable {}
 
 extension Reducer {
 
