@@ -1,4 +1,6 @@
 [![CI](https://github.com/m-housh/swift-tca-loadable/actions/workflows/ci.yml/badge.svg)](https://github.com/m-housh/swift-tca-loadable/actions/workflows/ci.yml)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fm-housh%2Fswift-tca-loadable%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/m-housh/swift-tca-loadable)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fm-housh%2Fswift-tca-loadable%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/m-housh/swift-tca-loadable)
 
 # swift-tca-loadable
 
