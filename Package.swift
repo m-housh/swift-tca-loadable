@@ -16,7 +16,7 @@ let package = Package(
   dependencies: [
     .package(
       url: "https://github.com/pointfreeco/swift-composable-architecture.git",
-      branch: "prerelease/1.0"
+      from: "0.52.0"
     ),
     .package(url: "https://github.com/pointfreeco/swift-case-paths.git", from: "0.14.0"),
     .package(url: "https://github.com/apple/swift-docc-plugin.git", from: "1.0.0"),

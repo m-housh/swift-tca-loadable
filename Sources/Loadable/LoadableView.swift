@@ -293,7 +293,7 @@ where
 
 #if DEBUG
   @available(iOS 16, macOS 13, *)
-  struct Preview: Reducer {
+  struct Preview: ReducerProtocol {
     struct State: Equatable {
       @LoadableState var int: Int?
     }
@@ -304,7 +304,7 @@ where
 
     @Dependency(\.continuousClock) var clock
 
-    var body: some ReducerOf<Self> {
+    var body: some ReducerProtocolOf<Self> {
       Reduce { state, action in
         switch action {
         case .int(.load):
