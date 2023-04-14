@@ -75,12 +75,17 @@ public struct LoadableState<Value> {
     }
   }
 
-  var id: StableID? {
+  var _id: StableID? {
     self.wrappedValue.map(StableID.init(base:))
+  }
+
+  public var id: AnyHashable {
+    self._id
   }
 }
 extension LoadableState: Equatable where Value: Equatable {}
 extension LoadableState: Hashable where Value: Hashable {}
+extension LoadableState: Identifiable where Value: Identifiable {}
 
 extension LoadableState: Decodable where Value: Decodable {
   public init(from decoder: Decoder) throws {

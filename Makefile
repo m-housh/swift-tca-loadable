@@ -1,35 +1,49 @@
 BIN_PATH = $(shell swift build --show-bin-path)
 XCTEST_PATH = $(shell find "$(BIN_PATH)" -name '*.xctest')
 COV_BIN = "$(XCTEST_PATH)"/Contents/MacOs/$(shell basename "$(XCTEST_PATH)" .xctest)
+
 PLATFORM_IOS = iOS Simulator,name=iPhone 14 Pro
 PLATFORM_MACOS = macOS
+PLATFORM_MAC_CATALYST = macOS,variant=Mac Catalyst
+PLATFORM_TVOS = tvOS Simulator,name=Apple TV
+PLATFORM_WATCHOS = watchOS Simulator,name=Apple Watch Series 8 (45mm)
+
 CONFIG := debug
 
 test-macos:
 		set -o pipefail && \
 		xcodebuild test \
 				-scheme swift-tca-loadable-Package \
-				-destination platform="macOS"
+				-destination platform="$(PLATFORM_MACOS)"
 
 test-ios:
 		set -o pipefail && \
 		xcodebuild test \
 				-scheme swift-tca-loadable-Package \
-				-destination platform="iOS Simulator,name=iPhone 11 Pro Max"
+				-destination platform="$(PLATFORM_IOS)"
+
+test-mac-catalyst:
+		set -o pipefail && \
+		xcodebuild test \
+				-scheme swift-tca-loadable-Package \
+				-destination platform="$(PLATFORM_MAC_CATALYST)"
+
+test-tvos:
+		set -o pipefail && \
+		xcodebuild test \
+				-scheme swift-tca-loadable-Package \
+				-destination platform="$(PLATFORM_TVOS)"
+
+test-watchos:
+		set -o pipefail && \
+		xcodebuild test \
+				-scheme swift-tca-loadable-Package \
+				-destination platform="$(PLATFORM_WATCHOS)"
 
 test-swift:
 	swift test --enable-code-coverage
 
-test-all: test-macos test-ios
-
-test-library:
-	for platform in "$(PLATFORM_IOS)" "$(PLATFORM_MACOS)"; do \
-		xcodebuild test \
-			-configuration $(CONFIG) \
-			-workspace Loadable.xcworkspace \
-			-scheme swift-tca-loadable \
-			-destination platform="$$platform" || exit 1; \
-	done;
+test-library: test-macos test-ios test-mac-catalyst test-tvos test-watchos
 
 code-cov-report:
 		@xcrun llvm-cov report \
