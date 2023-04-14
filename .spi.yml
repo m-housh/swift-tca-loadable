@@ -1,0 +1,12 @@
+version: 1
+builder:
+  confits:
+  - platfrom: ios
+    scheme: swift-tca-loadable-Package
+  - platform: macos-xcodebuild
+    scheme: swift-tca-loadable-Package
+  - platform: tvos
+    scheme: swift-tca-loadable-Package
+  - platform: watchos
+    scheme: swift-tca-loadable-Package
+  - documentation_targets: [Loadable]

@@ -9,7 +9,7 @@ import Foundation
 ///
 @dynamicMemberLookup
 @propertyWrapper
-public struct LoadableState<Value>: Identifiable {
+public struct LoadableState<Value> {
 
   /// Storage for the loading state.
   private var boxedValue: [LoadingState<Value>]
@@ -74,18 +74,18 @@ public struct LoadableState<Value>: Identifiable {
       self.wrappedValue![keyPath: keyPath] = newValue
     }
   }
-  
 
   var _id: StableID? {
     self.wrappedValue.map(StableID.init(base:))
   }
-  
+
   public var id: AnyHashable {
     self._id
   }
 }
 extension LoadableState: Equatable where Value: Equatable {}
 extension LoadableState: Hashable where Value: Hashable {}
+extension LoadableState: Identifiable where Value: Identifiable {}
 
 extension LoadableState: Decodable where Value: Decodable {
   public init(from decoder: Decoder) throws {
