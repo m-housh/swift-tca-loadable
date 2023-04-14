@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import CustomDump
 import Foundation
 
 /// A property wrapper that wraps an item in a ``LoadingState`` that can be loaded from a remote process.
@@ -129,7 +130,9 @@ public enum LoadingState<Value> {
   }
 }
 extension LoadingState: Equatable where Value: Equatable {}
+
 extension LoadingState: Hashable where Value: Hashable {}
+
 extension LoadingState: Decodable where Value: Decodable {
   public init(from decoder: Decoder) throws {
     do {
@@ -152,16 +155,21 @@ extension LoadingState: Encodable where Value: Encodable {
   }
 }
 
+#warning("This needs re-thought-out.")
 /// Represents the actions for a loadable value.
-public enum LoadingAction<Value> {
+public enum LoadingAction<State, Action> {
 
   /// Represents when the value should be loaded from a remote source.
   case load
 
+  #warning("Should this just handle the success / not be a TaskResult?")
   /// Receive a loaded value from a remote source.
-  case receiveLoaded(TaskResult<Value>)
+  case receiveLoaded(TaskResult<State>)
+
+  /// Child actions for when the state has loaded.
+  case loaded(Action)
 }
-extension LoadingAction: Equatable where Value: Equatable {}
+extension LoadingAction: Equatable where State: Equatable, Action: Equatable {}
 
 extension ReducerProtocol {
 
@@ -177,12 +185,27 @@ extension ReducerProtocol {
   /// - Parameters:
   ///   - toLoadableState: The key path from the parent state to a ``LoadingState`` instance.
   ///   - toLoadableAction: The case path from the parent action to a ``LoadingAction`` case.
-  public func loadable<ChildState>(
-    state toLoadableState: WritableKeyPath<State, LoadingState<ChildState>>,
-    action toLoadableAction: CasePath<Action, LoadingAction<ChildState>>
-  ) -> _LoadableReducer<Self, ChildState> {
+  public func loadable<Child: ReducerProtocol>(
+    state toLoadableState: WritableKeyPath<State, LoadingState<Child.State>>,
+    action toLoadableAction: CasePath<Action, LoadingAction<Child.State, Child.Action>>,
+    @ReducerBuilder<Child.State, Child.Action> then child: () -> Child
+  ) -> _LoadableReducer<Self, Child> {
     .init(
       parent: self,
+      child: child(),
+      toLoadableState: toLoadableState,
+      toLoadableAction: toLoadableAction
+    )
+  }
+
+  // When we don't have a nested actions.
+  public func loadable(
+    state toLoadableState: WritableKeyPath<State, LoadingState<State>>,
+    action toLoadableAction: CasePath<Action, LoadingAction<State, Action>>
+  ) -> _LoadableReducer<Self, EmptyReducer<State, Action>> {
+    .init(
+      parent: self,
+      child: EmptyReducer(),
       toLoadableState: toLoadableState,
       toLoadableAction: toLoadableAction
     )
@@ -193,36 +216,59 @@ extension ReducerProtocol {
 ///
 /// This should not be used directly, instead use the ``Reducer/loadable``.
 ///
-public struct _LoadableReducer<Parent: ReducerProtocol, Value: Equatable>: ReducerProtocol {
+public struct _LoadableReducer<Parent: ReducerProtocol, Child: ReducerProtocol>: ReducerProtocol {
 
   @usableFromInline
   let parent: Parent
 
   @usableFromInline
-  let toLoadableState: WritableKeyPath<Parent.State, LoadingState<Value>>
+  let child: Child
 
   @usableFromInline
-  let toLoadableAction: CasePath<Parent.Action, LoadingAction<Value>>
+  let toLoadableState: WritableKeyPath<Parent.State, LoadingState<Child.State>>
+
+  @usableFromInline
+  let toLoadableAction: CasePath<Parent.Action, LoadingAction<Child.State, Child.Action>>
 
   @inlinable
   public func reduce(
     into state: inout Parent.State,
     action: Parent.Action
   ) -> EffectTask<Parent.Action> {
-    let parentEffects = parent.reduce(into: &state, action: action)
-    if let loadingAction = toLoadableAction.extract(from: action) {
-      switch loadingAction {
-      case .load:
-        let currentValue = state[keyPath: toLoadableState].rawValue
-        state[keyPath: toLoadableState] = .isLoading(previous: currentValue)
-        break
-      case let .receiveLoaded(.success(loaded)):
-        state[keyPath: toLoadableState] = .loaded(loaded)
-        break
-      case .receiveLoaded:
-        break
+    let currentState = state[keyPath: toLoadableState]
+
+    let parentEffects: EffectTask<Parent.Action> = self.parent.reduce(into: &state, action: action)
+    let childEffects: EffectTask<Parent.Action>
+
+    if let loadableAction = toLoadableAction.extract(from: action) {
+      switch (currentState.rawValue, loadableAction) {
+      case let (childState, .load):
+        state[keyPath: toLoadableState] = .isLoading(previous: childState)
+        childEffects = .none
+      case let (_, .receiveLoaded(.success(childState))):
+        state[keyPath: toLoadableState] = .loaded(childState)
+        childEffects = .none
+      case (_, .receiveLoaded):
+        // What do we do when an error is recieved?
+        childEffects = .none
+      case (.some(var childState), .loaded(let childAction)):
+        childEffects = self.child.reduce(into: &childState, action: childAction)
+          .map { self.toLoadableAction.embed(.loaded($0)) }
+      case (.none, .loaded(_)):
+        XCTFail(
+          """
+          A loading action was recieved before the state has been loaded.
+          """
+        )
+        childEffects = .none
       }
+    } else {
+      childEffects = .none
     }
-    return parentEffects
+
+    return .merge(
+      childEffects,
+      parentEffects
+    )
   }
 }

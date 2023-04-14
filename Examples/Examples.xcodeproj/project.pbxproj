@@ -15,6 +15,7 @@
 		4C40D3B629E8480F00A8CF25 /* ExamplesUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C40D3B529E8480F00A8CF25 /* ExamplesUITests.swift */; };
 		4C40D3B829E8480F00A8CF25 /* ExamplesUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C40D3B729E8480F00A8CF25 /* ExamplesUITestsLaunchTests.swift */; };
 		4C40D3C829E8670500A8CF25 /* Loadable in Frameworks */ = {isa = PBXBuildFile; productRef = 4C40D3C729E8670500A8CF25 /* Loadable */; };
+		4CF385BB29E989F000EFC119 /* LoadablePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CF385BA29E989F000EFC119 /* LoadablePicker.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -45,6 +46,7 @@
 		4C40D3B129E8480F00A8CF25 /* ExamplesUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ExamplesUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C40D3B529E8480F00A8CF25 /* ExamplesUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExamplesUITests.swift; sourceTree = "<group>"; };
 		4C40D3B729E8480F00A8CF25 /* ExamplesUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExamplesUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		4CF385BA29E989F000EFC119 /* LoadablePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadablePicker.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -99,6 +101,7 @@
 			children = (
 				4C40D39A29E8480D00A8CF25 /* ExamplesApp.swift */,
 				4C40D39C29E8480D00A8CF25 /* ContentView.swift */,
+				4CF385BA29E989F000EFC119 /* LoadablePicker.swift */,
 				4C40D39E29E8480F00A8CF25 /* Assets.xcassets */,
 				4C40D3A029E8480F00A8CF25 /* Preview Content */,
 			);
@@ -270,6 +273,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4CF385BB29E989F000EFC119 /* LoadablePicker.swift in Sources */,
 				4C40D39D29E8480D00A8CF25 /* ContentView.swift in Sources */,
 				4C40D39B29E8480D00A8CF25 /* ExamplesApp.swift in Sources */,
 			);

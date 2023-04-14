@@ -21,7 +21,8 @@ struct EnvisionedUsage: ReducerProtocol {
   }
 
   enum Action: Equatable {
-    case user(LoadingAction<User>)
+    indirect case user(LoadingAction<User, Self>)
+    case foo
   }
 
   var body: some ReducerProtocolOf<Self> {

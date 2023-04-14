@@ -10,7 +10,7 @@ struct App: ReducerProtocol {
   }
 
   enum Action: Equatable {
-    case int(LoadingAction<Int>)
+    case int(LoadingAction<Int, Never>)
     case toggleHorizontalOrVertical
     case toggleSecondaryOrientation
   }
@@ -53,7 +53,9 @@ struct App: ReducerProtocol {
         return .none
       }
     }
-    .loadable(state: \.$int, action: /Action.int)
+    .loadable(state: \.$int, action: /Action.int) {
+      EmptyReducer<Int, Never>()
+    }
   }
 }
 
@@ -62,6 +64,7 @@ struct ContentView: View {
 
   var body: some View {
     VStack {
+//      LoadablePickerView_Previews.previews
       WithViewStore(store, observe: { $0 }) { viewStore in
         LoadableView(
           store: store.scope(state: \.$int, action: App.Action.int),
