@@ -62,7 +62,7 @@ struct UserPicker: ReducerProtocol {
 
 struct UserLoader: ReducerProtocol {
   struct State: Equatable {
-    @LoadableState var userPicker: UserPicker.State?
+    @LoadableState2 var userPicker: UserPicker.State?
   }
   
   enum Action: Equatable, LoadableAction {
@@ -82,13 +82,17 @@ struct UserLoader: ReducerProtocol {
         return .none
       }
     }
-//    .loadable(state: \.$userPicker, toChildAction: /Action.picker) {
-//      UserPicker()
-//    }
-    .loadable(state: \.$userPicker)
-    .ifLet(\.userPicker, action: /Action.picker) {
+    .loadable(
+      state: \.$userPicker,
+      action: /Action.loadable,
+      loadedAction: /Action.picker
+    ) {
       UserPicker()
     }
+//    .loadable(state: \.$userPicker)
+//    .ifLet(\.userPicker, action: /Action.picker) {
+//      UserPicker()
+//    }
   }
 }
 
@@ -171,7 +175,7 @@ final class TCA_LoadableTests: XCTestCase {
     }
     
     await store.send(.loadable(.load)) {
-      $0.$userPicker = .isLoading(previous: nil)
+      $0.$userPicker.loadingState = .isLoading(previous: nil)
     }
     await store.receive(.loadable(.receiveLoaded(.success(.init(users: mocks)))), timeout: 1) {
       $0.userPicker = .init(users: mocks)

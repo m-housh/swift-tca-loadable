@@ -42,6 +42,7 @@ public struct LoadableState<Value> {
     }
   }
 
+  /// Access to the ``LoadingState``.
   public var loadingState: LoadingState<Value> {
     _read { yield self.boxedValue.first ?? .notRequested }
     _modify {
@@ -102,6 +103,86 @@ extension LoadableState: Encodable where Value: Encodable {
     try self.loadingState.encode(to: encoder)
   }
 }
+
+@dynamicMemberLookup
+@propertyWrapper
+public struct LoadableState2<Value> {
+
+  /// Storage for the loading state.
+  private var boxedValue: [LoadingState<Value>]
+
+  /// Create a new ``LoadableState`` wrapping the passed in value (generally nil until loaded).
+  ///
+  /// - Parameters:
+  ///   - wrappedValue: The value type that is loadable.
+  public init(wrappedValue: Value?) {
+    self.boxedValue = wrappedValue.map { [.loaded($0)] } ?? []
+  }
+
+  /// Access the wrapped value if it's available / been loaded.
+  ///
+  public var wrappedValue: Value? {
+    _read { yield self.boxedValue.first?.rawValue }
+    _modify {
+      var state = self.boxedValue.first?.rawValue
+      yield &state
+      switch (state, self.boxedValue.isEmpty) {
+      case (nil, true):
+        return
+      case (nil, false):
+        self.boxedValue = []
+      case let (.some(state), true):
+        self.boxedValue.insert(.loaded(state), at: 0)
+      case let (.some(state), false):
+        self.boxedValue[0] = .loaded(state)
+      }
+    }
+  }
+
+  /// Access to the ``LoadingState``.
+  public var loadingState: LoadingState<Value> {
+    _read { yield self.boxedValue.first ?? .notRequested }
+    _modify {
+      var state = self.boxedValue.first ?? .notRequested
+      yield &state
+      switch self.boxedValue.isEmpty {
+      case (true):
+        self.boxedValue.insert(state, at: 0)
+      case (false):
+        self.boxedValue[0] = state
+      }
+    }
+  }
+
+  public var projectedValue: Self {
+    get { self }
+    set { self = newValue }
+    _modify { yield &self }
+  }
+
+  public subscript<A>(
+    dynamicMember keyPath: WritableKeyPath<Value, A>
+  ) -> A? {
+    get { self.wrappedValue?[keyPath: keyPath] }
+    set {
+      guard self.wrappedValue != nil,
+        let newValue
+      else { return }
+      self.wrappedValue![keyPath: keyPath] = newValue
+    }
+  }
+
+  var _id: StableID? {
+    self.wrappedValue.map(StableID.init(base:))
+  }
+
+  public var id: AnyHashable {
+    self._id
+  }
+}
+extension LoadableState2: Equatable where Value: Equatable {}
+extension LoadableState2: Hashable where Value: Hashable {}
+extension LoadableState2: Identifiable where Value: Identifiable {}
 
 /// Represents different states of a loadable value.
 ///
@@ -461,75 +542,25 @@ extension ReducerProtocol where Action: LoadableAction {
       toLoadableAction: /Action.loadable(_:)
     )
   }
- 
-//  public func loadable<Child: ReducerProtocol>(
-//    state toLoadableState: WritableKeyPath<State, LoadingState<Child.State>>,
-//    toChildAction: CasePath<Action, Child.Action>,
-//    @ReducerBuilder<Child.State, Child.Action> child: () -> Child
-//  ) -> _LoadableChildReducer<Self, Child.State, Child.Action, Child>
-//  where Child.State == Action.State, Child.State: Equatable {
-//    .init(
-//      parent: self,
-//      child: child(),
-//      toLoadableState: toLoadableState,
-//      toLoadableAction: /Action.loadable(_:),
-//      toChildState: { $0[keyPath: toLoadableState].rawValue },
-  
-//      toChildAction: toChildAction
-//    )
-//  }
 }
 
-//public struct _LoadableChildReducer<Parent: ReducerProtocol, ChildState, ChildAction, Child: ReducerProtocol>: ReducerProtocol
-//where ChildState: Equatable, Child.State == ChildState, Child.Action == ChildAction {
-//
-//  let parent: Parent
-//  let child: Child
-//  let toLoadableState: WritableKeyPath<Parent.State, LoadingState<ChildState>>
-//  let toLoadableAction: CasePath<Parent.Action, LoadingAction<ChildState>>
-//  let toChildState: (Parent.State) -> ChildState?
-//  let toChildAction: CasePath<Parent.Action, ChildAction>
-//
-//
-//  public func reduce(into state: inout Parent.State, action: Parent.Action) -> EffectTask<Parent.Action> {
-//
-//    let loadableReducer = _LoadableReducer(
-//      parent: self.parent,
-//      toLoadableState: self.toLoadableState,
-//      toLoadableAction: self.toLoadableAction
-//    )
-//
-//    let loadableEffects = loadableReducer.reduce(into: &state, action: action)
-//
-//    let childState = toChildState(state)
-//    let childEffects: EffectTask<Parent.Action>
-//    let childAction = toChildAction.extract(from: action)
-//
-//    switch (childState, childAction) {
-//    case (.some(var child), .some(let childAction)):
-//      childEffects = self.child.reduce(into: &child, action: childAction)
-//        .map { toChildAction.embed($0) }
-//    case (.none, .some):
-//      XCTFail(
-//      """
-//      A child action was received before the state was loaded.
-//
-//      This is considered an application bug.
-//      """
-//      )
-//      childEffects = .none
-//    case (.none, .none):
-//      childEffects = .none
-//    case (.some(_), .none):
-//      childEffects = .none
-//    }
-//
-//    return .merge(
-//      loadableEffects,
-//      childEffects
-//    )
-//  }
-//}
+extension ReducerProtocol {
+  public func loadable<ChildState: Equatable, ChildAction: Equatable, Child: ReducerProtocol>(
+    state toLoadableState: WritableKeyPath<State, LoadableState2<ChildState>>,
+    action toLoadingAction: CasePath<Action, LoadingAction<ChildState>>,
+    loadedAction toChildAction: CasePath<Action, ChildAction>,
+    @ReducerBuilder<ChildState, ChildAction> child: () -> Child
+  ) -> _LoadableReducer2<Self, ChildState, ChildAction, Child>
+  where ChildState == Child.State, ChildAction == Child.Action {
+    .init(
+      parent: self,
+      child: child(),
+      toLoadableState: toLoadableState,
+      toLoadableAction: toLoadingAction,
+      toChildAction: toChildAction
+    )
+  }
+}
 
 /// A concrete reducer used for the default loading implementation.
 ///
@@ -579,3 +610,96 @@ public struct _LoadableReducer<Parent: ReducerProtocol, Value: Equatable>: Reduc
     return parentEffects
   }
 }
+
+public struct _LoadableReducer2<
+  Parent: ReducerProtocol,
+  ChildState,
+  ChildAction,
+  Child: ReducerProtocol
+>: ReducerProtocol where Child.State == ChildState, Child.Action == ChildAction {
+
+  @usableFromInline
+  let parent: Parent
+  
+  @usableFromInline
+  let child: Child
+
+  @usableFromInline
+  let toLoadableState: WritableKeyPath<Parent.State, LoadableState2<ChildState>>
+
+  @usableFromInline
+  let toLoadableAction: CasePath<Parent.Action, LoadingAction<ChildState>>
+  
+  @usableFromInline
+  let toChildAction: CasePath<Parent.Action, ChildAction>
+  
+  @inlinable
+  init(
+    parent: Parent,
+    child: Child,
+    toLoadableState: WritableKeyPath<Parent.State, LoadableState2<ChildState>>,
+    toLoadableAction: CasePath<Parent.Action, LoadingAction<ChildState>>,
+    toChildAction: CasePath<Parent.Action, ChildAction>
+  ) {
+    self.parent = parent
+    self.child = child
+    self.toLoadableState = toLoadableState
+    self.toLoadableAction = toLoadableAction
+    self.toChildAction = toChildAction
+  }
+
+  @inlinable
+  public func reduce(
+    into state: inout Parent.State,
+    action: Parent.Action
+  ) -> EffectTask<Parent.Action> {
+    let parentEffects = parent.reduce(into: &state, action: action)
+    let loadableEffects: EffectTask<Parent.Action> = .none
+    let childEffects: EffectTask<Parent.Action>
+    
+    if let loadingAction = toLoadableAction.extract(from: action) {
+      switch loadingAction {
+      case .load:
+        state[keyPath: toLoadableState].loadingState.setIsLoading()
+      case let .receiveLoaded(.success(loaded)):
+        state[keyPath: toLoadableState].loadingState = .loaded(loaded)
+      case .receiveLoaded:
+        break
+      }
+    }
+    
+    let childState = state[keyPath: toLoadableState].wrappedValue
+    let childAction = toChildAction.extract(from: action)
+    
+    switch (childState, childAction) {
+    case (.some, .some(let action)):
+      childEffects = child.reduce(
+        into: &state[keyPath: toLoadableState].wrappedValue!,
+        action: action
+      )
+      .map { toChildAction.embed($0) }
+    case (.none, .some(let action)):
+      XCTFail(
+      """
+      A child action was sent when the child value value has not yet been loaded.
+      
+      Action: \(action)
+      
+      This is generally considered an application logic error.
+      """
+      )
+      childEffects = .none
+    case (.none, .none):
+      childEffects = .none
+    case (.some, .none):
+      childEffects = .none
+    }
+    
+    return .merge(
+      parentEffects,
+      loadableEffects,
+      childEffects
+    )
+  }
+}
+
