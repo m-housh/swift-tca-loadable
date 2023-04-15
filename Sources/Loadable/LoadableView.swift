@@ -14,29 +14,26 @@ import SwiftUI
 ///       @LoadableState var int: Int?
 ///     }
 ///
-///     enum Action: Equatable {
-///       case int(LoadingAction<Int>)
+///     enum Action: Equatable, LoadableAction {
+///       case loadable(LoadingAction<Int>)
 ///     }
 ///
 ///     @Dependency(\.continuousClock) var clock;
 ///     var body: some ReducerOf<Self> {
 ///       Reduce { state, action in
 ///         switch action {
-///         case .int(.load):
-///           return .task {
-///             await .int(.receiveLoaded(
-///               TaskResult {
-///                 /// sleep to act like data is loading from a remote.
-///                 try await clock.sleep(for: .seconds(2))
-///                 return 42
-///               }
-///             ))
+///         case .loadable(.load):
+///           return .load {
+///               /// sleep to act like data is loading from a remote.
+///               try await clock.sleep(for: .seconds(2))
+///               return 42
+///             }
 ///           }
-///         case .int:
+///         case .loadable:
 ///           return .none
 ///         }
 ///       }
-///       .loadable(state: \.$int, action: /Action.int)
+///       .loadable(state: \.$loadable)
 ///     }
 ///  }
 ///
@@ -103,13 +100,14 @@ public struct LoadableView<
   /// - Parameters:
   ///   - store: The store of the ``LoadingState`` and ``LoadingAction``
   ///   - autoload: A flag for if we should call ``LoadingAction/load`` when the view appears.
+  ///   - action: A transfromation action used for when the state is ``LoadingState/loaded(_:)``, allows the loaded view to work on a different domain.
   ///   - loaded: The view to show when the state is ``LoadingState/loaded(_:)``
   ///   - notRequested: The view to show when the state is ``LoadingState/notRequested``
   ///   - isLoading: The view to show when the state is ``LoadingState/isLoading(previous:)``
   public init(
     _ store: Store<LoadingState<State>, Action>,
     autoload: Autoload = .whenNotRequested,
-    loadedAction fromLoadedAction: @escaping (LoadedAction) -> Action,
+    action fromLoadedAction: @escaping (LoadedAction) -> Action,
     @ViewBuilder loaded: @escaping (Store<State, LoadedAction>) -> Loaded,
     @ViewBuilder notRequested: @escaping () -> NotRequested,
     @ViewBuilder isLoading: @escaping (Store<State?, Action>) -> IsLoading
@@ -178,6 +176,16 @@ public struct LoadableView<
 }
 
 extension LoadableView where LoadedAction == Action {
+  
+  /// Create a ``LoadableView`` without any default view implementations for the ``LoadingState``,
+  /// when the loaded action is in the same domain as the current context.
+  ///
+  /// - Parameters:
+  ///   - store: The store of the ``LoadingState`` and ``LoadingAction``
+  ///   - autoload: A flag for if we should call ``LoadingAction/load`` when the view appears.
+  ///   - loaded: The view to show when the state is ``LoadingState/loaded(_:)``
+  ///   - notRequested: The view to show when the state is ``LoadingState/notRequested``
+  ///   - isLoading: The view to show when the state is ``LoadingState/isLoading(previous:)``
    public init(
     _ store: Store<LoadingState<State>, Action>,
     autoload: Autoload = .whenNotRequested,
@@ -226,11 +234,16 @@ extension LoadableView where NotRequested == ProgressView<EmptyView, EmptyView> 
   /// Create a ``LoadableView`` that uses a `ProgressView` for the ``LoadingState/notRequested`` state,
   /// allowing customization of the other view's for ``LoadingState``.
   ///
+  /// - Parameters:
+  ///   - store: The store of the ``LoadingState`` and ``LoadingAction``
+  ///   - autoload: A flag for if we should call ``LoadingAction/load`` when the view appears.
+  ///   - loaded: The view to show when the state is ``LoadingState/loaded(_:)``
+  ///   - isLoading: The view to show when the state is ``LoadingState/isLoading(previous:)``
   public init(
     _ store: Store<LoadingState<State>, Action>,
     autoload: Autoload = .whenNotRequested,
-    @ViewBuilder isLoading: @escaping (Store<State?, Action>) -> IsLoading,
-    @ViewBuilder loaded: @escaping (Store<State, Action>) -> Loaded
+    @ViewBuilder loaded: @escaping (Store<State, Action>) -> Loaded,
+    @ViewBuilder isLoading: @escaping (Store<State?, Action>) -> IsLoading
   ) where LoadedAction == Action {
     self.init(
       store,
@@ -241,17 +254,26 @@ extension LoadableView where NotRequested == ProgressView<EmptyView, EmptyView> 
     )
   }
   
+  /// Create a ``LoadableView`` that uses a `ProgressView` for the ``LoadingState/notRequested`` state,
+  /// allowing customization of the other view's for ``LoadingState``.
+  ///
+  /// - Parameters:
+  ///   - store: The store of the ``LoadingState`` and ``LoadingAction``
+  ///   - autoload: A flag for if we should call ``LoadingAction/load`` when the view appears.
+  ///   - action: A transfromation action used for when the state is ``LoadingState/loaded(_:)``, allows the loaded view to work on a different domain.
+  ///   - loaded: The view to show when the state is ``LoadingState/loaded(_:)``
+  ///   - isLoading: The view to show when the state is ``LoadingState/isLoading(previous:)``
   public init(
     _ store: Store<LoadingState<State>, Action>,
     autoload: Autoload = .whenNotRequested,
-    loadedAction fromLoadedAction: @escaping (LoadedAction) -> Action,
-    @ViewBuilder isLoading: @escaping (Store<State?, Action>) -> IsLoading,
-    @ViewBuilder loaded: @escaping (Store<State, Action>) -> Loaded
+    action fromLoadedAction: @escaping (LoadedAction) -> Action,
+    @ViewBuilder loaded: @escaping (Store<State, Action>) -> Loaded,
+    @ViewBuilder isLoading: @escaping (Store<State?, Action>) -> IsLoading
   ) where LoadedAction == Action {
     self.init(
       store,
       autoload: autoload,
-      loadedAction: fromLoadedAction,
+      action: fromLoadedAction,
       loaded: loaded,
       notRequested: { ProgressView() },
       isLoading: isLoading
@@ -332,12 +354,56 @@ where
       }
     )
   }
-  
+  #warning("Update the example to use a different domain for the loaded view.")
+  /// Create a ``LoadableView`` that uses the default `ProgressView` for when an item is ``LoadingState/notRequested``.
+  /// And uses an `HStack` or a `VStack` with the `ProgressView` and the `LoadedView` for when an
+  /// item is in the ``LoadingState/isLoading(previous:)`` state.
+  ///
+  /// With this initializer overload, you can specify the `NotRequested` view by using a closure that get's passed a
+  /// boolean, which is `false`  when the loading state is ``LoadingState/notRequested`` or  `true` when
+  /// the loading state is ``LoadingState/isLoading(previous:)``.
+  ///
+  ///  **Example**
+  /// ```swift
+  ///  struct ContentView: View {
+  ///    let store: StoreOf<App>
+  ///    var body: some View {
+  ///      VStack {
+  ///        WithViewStore(store, observe: { $0 }) { viewStore in
+  ///          LoadableView(
+  ///           store: store.scope(state: \.$int, action: Preview.Action.int),
+  ///           orientation: .vertical
+  ///          ) {
+  ///            WithViewStore($0, observe: { $0 }) { viewStore in
+  ///              Text("Loaded: \(viewStore.state)")
+  ///            }
+  ///          } notRequested: { isLoading in
+  ///             ProgressView()
+  ///               .scaleEffect(x: isLoading ? 1 : 2, y: isLoading ? 1 : 2, anchor: .center)
+  ///          }
+  ///          Button(action: { viewStore.send(.int(.load)) }) {
+  ///            Text("Reload")
+  ///          }
+  ///          .padding(.top)
+  ///        }
+  ///      }
+  ///      .padding()
+  ///    }
+  ///  }
+  /// ```
+  ///
+  /// - Parameters:
+  ///   - store: The store of the ``LoadingState`` and ``LoadingAction``
+  ///   - autoload: A flag for if we should call ``LoadingAction/load`` when the view appears.
+  ///   - isLoadingOrientation: A flag for whether to show the not requested view in an `HStack` or a `VStack`.
+  ///   - action: A transfromation action used for when the state is ``LoadingState/loaded(_:)``, allows the loaded view to work on a different domain.
+  ///   - loaded: The view to show when the state is ``LoadingState/loaded(_:)``
+  ///   - notRequested: The view to show when the state is ``LoadingState/notRequested``
   public init(
     _ store: Store<LoadingState<State>, Action>,
     autoload: Autoload = .whenNotRequested,
     orientation isLoadingOrientation: IsLoadingOrientation = .horizontal(),
-    loadedAction fromLoadedAction: @escaping (LoadedAction) -> Action,
+    action fromLoadedAction: @escaping (LoadedAction) -> Action,
     @ViewBuilder loaded: @escaping (Store<State, LoadedAction>) -> Loaded,
     @ViewBuilder notRequested: @escaping (Bool) -> NotRequested
   )
@@ -346,14 +412,14 @@ where
     self.init(
       store,
       autoload: autoload,
-      loadedAction: fromLoadedAction,
+      action: fromLoadedAction,
       loaded: loaded,
       notRequested: { notRequested(false) },
       isLoading: {
         IsLoadingView(
           $0,
           orientation: isLoadingOrientation,
-          loadedAction: fromLoadedAction,
+          action: fromLoadedAction,
           notRequested: notRequested,
           loaded: loaded
         )
@@ -408,12 +474,43 @@ where
       notRequested: { notRequested($0) }
     )
   }
-  
+  #warning("Update the example to use a different domain for the loaded view.")
+  /// Create a ``LoadableView`` that uses the default `ProgressView` for when an item is ``LoadingState/notRequested``.
+  /// And uses an `HStack` or a `VStack` with the `ProgressView` along with the `LoadedView` for when an
+  /// item is in the ``LoadingState/isLoading(previous:)`` state.
+  ///
+  /// ```swift
+  ///  struct ContentView: View {
+  ///    let store: StoreOf<App>
+  ///    var body: some View {
+  ///      VStack {
+  ///        WithViewStore(store, observe: { $0 }) { viewStore in
+  ///          LoadableView(store: store.scope(state: \.$int, action: Preview.Action.int)) {
+  ///            WithViewStore($0, observe: { $0 }) { viewStore in
+  ///              Text("Loaded: \(viewStore.state)")
+  ///            }
+  ///          }
+  ///          Button(action: { viewStore.send(.int(.load)) }) {
+  ///            Text("Reload")
+  ///          }
+  ///          .padding(.top)
+  ///        }
+  ///      }
+  ///      .padding()
+  ///    }
+  ///  }
+  /// ```
+  /// - Parameters:
+  ///   - store: The store of the ``LoadingState`` and ``LoadingAction``
+  ///   - autoload: A flag for if we should call ``LoadingAction/load`` when the view appears.
+  ///   - isLoadingOrientation: A flag for whether to show the not requested view in an `HStack` or a `VStack`.
+  ///   - action: A transfromation action used for when the state is ``LoadingState/loaded(_:)``, allows the loaded view to work on a different domain.
+  ///   - loaded: The view to show when the state is ``LoadingState/loaded(_:)``
   public init(
     _ store: Store<LoadingState<State>, Action>,
     autoload: Autoload = .whenNotRequested,
     orientation isLoadingOrientation: IsLoadingOrientation = .horizontal(),
-    loadedAction fromLoadedAction: @escaping (LoadedAction) -> Action,
+    action fromLoadedAction: @escaping (LoadedAction) -> Action,
     @ViewBuilder loaded: @escaping (Store<State, LoadedAction>) -> Loaded
   )
   where IsLoading == IsLoadingView<State, Action, LoadedAction, NotRequested, Loaded> {
@@ -422,7 +519,7 @@ where
       store,
       autoload: autoload,
       orientation: isLoadingOrientation,
-      loadedAction: fromLoadedAction,
+      action: fromLoadedAction,
       loaded: loaded,
       notRequested: { notRequested($0) }
     )
@@ -469,7 +566,7 @@ public struct IsLoadingView<State, Action, LoadedAction, NotRequested: View, Loa
   public init(
     _ store: Store<State?, Action>,
     orientation: IsLoadingOrientation,
-    loadedAction fromLoadedAction: @escaping (LoadedAction) -> Action,
+    action fromLoadedAction: @escaping (LoadedAction) -> Action,
     @ViewBuilder notRequested: @escaping (Bool) -> NotRequested,
     @ViewBuilder loaded: @escaping (Store<State, LoadedAction>) -> Loaded
   ) {

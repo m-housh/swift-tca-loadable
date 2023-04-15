@@ -90,7 +90,7 @@ struct LoadablePicker: View {
   var body: some View {
     LoadableView(
       self.store.scope(state: \.$userPicker),
-      loadedAction: UserLoader.Action.picker
+      action: UserLoader.Action.picker
     ) {
       UserPickerView(store: $0)
     }
