@@ -10,34 +10,42 @@ PLATFORM_WATCHOS = watchOS Simulator,name=Apple Watch Series 8 (45mm)
 
 CONFIG := debug
 
-test-macos:
+clean:
+	rm -rf .build
+
+test-macos: clean
 		set -o pipefail && \
 		xcodebuild test \
 				-scheme swift-tca-loadable-Package \
+				-configuration "$(CONFIG)" \
 				-destination platform="$(PLATFORM_MACOS)"
 
-test-ios:
+test-ios: clean
 		set -o pipefail && \
 		xcodebuild test \
 				-scheme swift-tca-loadable-Package \
+				-configuration "$(CONFIG)" \
 				-destination platform="$(PLATFORM_IOS)"
 
-test-mac-catalyst:
+test-mac-catalyst: clean
 		set -o pipefail && \
 		xcodebuild test \
 				-scheme swift-tca-loadable-Package \
+				-configuration "$(CONFIG)" \
 				-destination platform="$(PLATFORM_MAC_CATALYST)"
 
-test-tvos:
+test-tvos: clean
 		set -o pipefail && \
 		xcodebuild test \
 				-scheme swift-tca-loadable-Package \
+				-configuration "$(CONFIG)" \
 				-destination platform="$(PLATFORM_TVOS)"
 
-test-watchos:
+test-watchos: clean
 		set -o pipefail && \
 		xcodebuild test \
 				-scheme swift-tca-loadable-Package \
+				-configuration "$(CONFIG)" \
 				-destination platform="$(PLATFORM_WATCHOS)"
 
 test-swift:

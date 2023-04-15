@@ -9,8 +9,8 @@ struct App: ReducerProtocol {
     var orientation: IsLoadingOrientation = .horizontal()
   }
 
-  enum Action: Equatable {
-    case int(LoadingAction<Int>)
+  enum Action: Equatable, LoadableAction {
+    case loadable(LoadingAction<Int>)
     case toggleHorizontalOrVertical
     case toggleSecondaryOrientation
   }
@@ -19,17 +19,12 @@ struct App: ReducerProtocol {
   var body: some ReducerProtocolOf<Self> {
     Reduce { state, action in
       switch action {
-      case .int(.load):
-        return .task {
-          await .int(.receiveLoaded(
-            TaskResult {
-              /// sleep to act like data is loading from a remote.
-              try await clock.sleep(for: .seconds(2))
-              return 42
-            }
-          ))
+      case .loadable(.load):
+        return .load {
+          try await clock.sleep(for: .seconds(2))
+          return 42
         }
-      case .int:
+      case .loadable:
         return .none
       case .toggleHorizontalOrVertical:
         switch state.orientation {
@@ -53,7 +48,7 @@ struct App: ReducerProtocol {
         return .none
       }
     }
-    .loadable(state: \.$int, action: /Action.int)
+    .loadable(state: \.$int)
   }
 }
 
@@ -64,14 +59,14 @@ struct ContentView: View {
     VStack {
       WithViewStore(store, observe: { $0 }) { viewStore in
         LoadableView(
-          store: store.scope(state: \.$int, action: App.Action.int),
+          self.store.scope(state: \.$int.loadingState),
           orientation: viewStore.orientation
         ) {
           WithViewStore($0, observe: { $0 }) { viewStore in
             Text("Loaded: \(viewStore.state)")
           }
         }
-        Button(action: { viewStore.send(.int(.load)) }) {
+        Button(action: { viewStore.send(.load) }) {
           Text("Reload")
         }
         .padding(.top)
