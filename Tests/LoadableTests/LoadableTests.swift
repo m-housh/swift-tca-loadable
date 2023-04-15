@@ -7,19 +7,23 @@ struct User: Codable, Identifiable, Equatable {
   let name: String
 
   static var mock: Self {
-    @Dependency(\.uuid) var uuid;
     return Self.init(
-      id: uuid(),
+      id: UUID(uuidString: "deadbeef-dead-beef-dead-beefdeadbeef")!,
       name: "Blob"
     )
   }
   
   static var mocks: [Self] {
-    @Dependency(\.uuid) var uuid;
     return [
-      .init(id: uuid(), name: "Blob"),
-      .init(id: uuid(), name: "Blob Jr."),
-      .init(id: uuid(), name: "Blob Sr."),
+      .mock,
+      .init(
+        id: UUID(uuidString: "00000000-0000-0000-0000-000000000000")!,
+        name: "Blob Jr."
+      ),
+      .init(
+        id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+        name: "Blob Sr."
+      ),
     ]
   }
 }
@@ -34,13 +38,23 @@ struct EnvisionedUsage: ReducerProtocol {
     @LoadableState var user: User? = nil
   }
 
-  enum Action: Equatable {
-    case user(LoadingAction<User>)
+  enum Action: Equatable, LoadableAction {
+    case loadable(LoadingAction<User>)
   }
 
   var body: some ReducerProtocolOf<Self> {
-    EmptyReducer()
-      .loadable(state: \.$user, action: /Action.user)
+
+    Reduce { state, action in
+      switch action {
+      case .loadable(.load):
+        return .load {
+          return User.mock
+        }
+      case .loadable:
+        return .none
+      }
+    }
+    .loadable(state: \.$user)
   }
 }
 
@@ -62,7 +76,7 @@ struct UserPicker: ReducerProtocol {
 
 struct UserLoader: ReducerProtocol {
   struct State: Equatable {
-    @LoadableState2 var userPicker: UserPicker.State?
+    @LoadableState var userPicker: UserPicker.State?
   }
   
   enum Action: Equatable, LoadableAction {
@@ -82,74 +96,52 @@ struct UserLoader: ReducerProtocol {
         return .none
       }
     }
-    .loadable(
-      state: \.$userPicker,
-      action: /Action.loadable,
-      loadedAction: /Action.picker
-    ) {
+    .loadable(state: \.$userPicker, action: /Action.loadable, then: /Action.picker) {
       UserPicker()
     }
-//    .loadable(state: \.$userPicker)
-//    .ifLet(\.userPicker, action: /Action.picker) {
-//      UserPicker()
-//    }
   }
 }
-
-//let reducer = EmptyReducer<UserLoader.State, UserLoader.Action>()
-//  .loadable(
-//    state: \.$userPicker,
-//    toChildAction: /UserLoader.Action.picker
-//  ) {
-//    UserPicker()
-//  }
-//  .loadable(state: \.$userPicker)
-//  .ifLet(\.userPicker, action: /UserLoader.Action.picker) {
-//    UserPicker()
-//  }
 
 @MainActor
 final class TCA_LoadableTests: XCTestCase {
   
   func test_loadable() async {
-    
+
     let store = TestStore(
       initialState: EnvisionedUsage.State(),
       reducer: EnvisionedUsage()
     )
-    
-    let mock = withDependencies {
-      $0.uuid = .incrementing
-    } operation: {
-      return User.mock
+
+    await store.send(.loadable(.load)) {
+      $0.$user.loadingState = .isLoading(previous: nil)
+    }
+    await store.receive(.loadable(.receiveLoaded(.success(.mock))), timeout: 1) {
+      $0.$user.loadingState = .loaded(.mock)
+    }
+
+    await store.send(.load) {
+      $0.$user.loadingState = .isLoading(previous: .mock)
     }
     
-    await store.send(.user(.receiveLoaded(.success(mock)))) {
-      $0.user = mock
+    await store.receive(.receiveLoaded(.success(.mock)), timeout: 1) {
+      $0.$user.loadingState = .loaded(.mock)
+      $0.user = .mock
     }
-    await store.send(.user(.load)) {
-      $0.$user = .isLoading(previous: mock)
-    }
+
   }
 
   func test_codable() throws {
     let json = """
     {
       "user" : {
-        "id" : "00000000-0000-0000-0000-000000000000",
+        "id" : "DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF",
         "name" : "Blob"
       }
     }
     """
     let decoded = try JSONDecoder().decode(EnvisionedUsage.State.self, from: Data(json.utf8))
 
-    let mock = withDependencies {
-      $0.uuid = .incrementing
-    } operation: {
-      User.mock
-    }
-
-    let state = EnvisionedUsage.State(user: mock)
+    let state = EnvisionedUsage.State(user: .mock)
     XCTAssertEqual(decoded, state)
 
     let encoder = JSONEncoder()
@@ -164,24 +156,23 @@ final class TCA_LoadableTests: XCTestCase {
     let store = TestStore(
       initialState: UserLoader.State(),
       reducer: UserLoader()
-    ) {
-      $0.uuid = .incrementing
-    }
-    
-    let mocks = withDependencies {
-      $0.uuid = .incrementing
-    } operation: {
-      return IdentifiedArrayOf<User>.mocks
-    }
+    )
     
     await store.send(.loadable(.load)) {
       $0.$userPicker.loadingState = .isLoading(previous: nil)
     }
-    await store.receive(.loadable(.receiveLoaded(.success(.init(users: mocks)))), timeout: 1) {
-      $0.userPicker = .init(users: mocks)
+    await store.receive(.loadable(.receiveLoaded(.success(.init(users: .mocks)))), timeout: 1) {
+      $0.userPicker = .init(users: .mocks)
     }
-    await store.send(.picker(.set(\.$selected, mocks[0].id))) {
-      $0.userPicker?.selected = mocks[0].id
+    await store.send(.loadable(.load)) {
+      $0.$userPicker.loadingState = .isLoading(previous: .init(users: .mocks))
     }
+    await store.receive(.loadable(.receiveLoaded(.success(.init(users: .mocks)))), timeout: 1) {
+      $0.$userPicker.loadingState = .loaded(.init(users: .mocks))
+    }
+    await store.send(.picker(.set(\.$selected, User.mocks[0].id))) {
+      $0.userPicker?.selected = User.mocks[0].id
+    }
+
   }
 }

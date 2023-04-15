@@ -73,11 +73,7 @@ struct UserLoader: ReducerProtocol {
         return .none
       }
     }
-//    .loadable(state: \.$userPicker, toChildAction: /Action.picker) {
-//      UserPicker()
-//    }
-    .loadable(state: \.$userPicker)
-    .ifLet(\.userPicker, action: /Action.picker) {
+    .loadable(state: \.$userPicker,then: /Action.picker) {
       UserPicker()
     }
   }
@@ -88,16 +84,19 @@ struct LoadablePicker: View {
   let store: StoreOf<UserLoader>
   
   var body: some View {
-    LoadableView(
-      self.store.scope(state: \.$userPicker),
-      action: UserLoader.Action.picker
-    ) {
-      UserPickerView(store: $0)
+    WithViewStore(self.store, observe: { $0 }) { viewStore in
+      LoadableView(
+        self.store.scope(state: \.$userPicker.loadingState),
+        action: UserLoader.Action.picker
+      ) {
+        UserPickerView(store: $0, reload: { viewStore.send(.load) })
+      }
     }
   }
   
   struct UserPickerView: View {
     let store: StoreOf<UserPicker>
+    let reload: () -> Void
     
     var body: some View {
       WithViewStore(self.store, observe: { $0 }) { viewStore in
@@ -108,6 +107,10 @@ struct LoadablePicker: View {
                 .tag(Optional($0.id))
             }
           }
+          Button(action: { self.reload() }) {
+            Text("Reload")
+          }
+          .padding(.top)
         }
       }
     }
@@ -119,7 +122,7 @@ struct LoadablePicker_Previews: PreviewProvider {
     LoadablePicker(
       store: .init(
         initialState: UserLoader.State(),
-        reducer: UserLoader()
+        reducer: UserLoader()._printChanges()
       )
     )
   }
