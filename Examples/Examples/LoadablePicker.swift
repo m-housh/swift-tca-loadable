@@ -29,6 +29,28 @@ extension IdentifiedArray where ID == User.ID, Element == User {
   static var mocks: Self { .init(uniqueElements: User.mocks) }
 }
 
+private struct UserLoaderKey: DependencyKey {
+  
+  var loadUsers: () async throws -> IdentifiedArrayOf<User>
+  
+  static var liveValue: UserLoaderKey {
+    @Dependency(\.continuousClock) var clock;
+    
+    return self.init(loadUsers: {
+      // Simulate loading the users from a remote.
+      try await clock.sleep(for: .seconds(2))
+      return .mocks
+    })
+  }
+}
+
+extension DependencyValues {
+  var loadUsers: () async throws -> IdentifiedArrayOf<User> {
+    get { self[UserLoaderKey.self].loadUsers }
+    set { self[UserLoaderKey.self].loadUsers = newValue }
+  }
+}
+
 struct UserPicker: ReducerProtocol {
   
   struct State: Equatable {
@@ -55,18 +77,14 @@ struct UserLoader: ReducerProtocol {
     case picker(UserPicker.Action)
   }
   
-  @Dependency(\.continuousClock) var clock;
+  @Dependency(\.loadUsers) var loadUsers;
 
   var body: some ReducerProtocolOf<Self> {
     
     Reduce { state, action in
       switch action {
       case .loadable(.load):
-        return .load {
-          // Simulate loading the users from a remote.
-          try await clock.sleep(for: .seconds(2))
-          return .init(users: .mocks)
-        }
+        return .load { try await .init(users: loadUsers()) }
       case .loadable:
         return .none
       case .picker:
@@ -84,14 +102,14 @@ struct LoadablePicker: View {
   let store: StoreOf<UserLoader>
   
   var body: some View {
-    WithViewStore(self.store, observe: { $0 }) { viewStore in
+//    WithViewStore(self.store, observe: { $0 }) { viewStore in
       LoadableView(
         self.store.scope(state: \.$userPicker.loadingState),
         action: UserLoader.Action.picker
       ) {
-        UserPickerView(store: $0, reload: { viewStore.send(.load) })
+        UserPickerView(store: $0, reload: { ViewStore(store).send(.load) })
       }
-    }
+//    }
   }
   
   struct UserPickerView: View {

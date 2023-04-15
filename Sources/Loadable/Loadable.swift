@@ -162,6 +162,8 @@ extension LoadingState: Encodable where Value: Encodable {
   }
 }
 
+// MARK: - Actions
+
 /// Represents the actions for a loadable value.
 public enum LoadingAction<Value> {
 

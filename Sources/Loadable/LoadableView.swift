@@ -354,7 +354,7 @@ where
       }
     )
   }
-  #warning("Update the example to use a different domain for the loaded view.")
+  // TODO: Better example for using a different domain for the loaded view
   /// Create a ``LoadableView`` that uses the default `ProgressView` for when an item is ``LoadingState/notRequested``.
   /// And uses an `HStack` or a `VStack` with the `ProgressView` and the `LoadedView` for when an
   /// item is in the ``LoadingState/isLoading(previous:)`` state.
@@ -475,7 +475,7 @@ where
       notRequested: { notRequested($0) }
     )
   }
-  #warning("Update the example to use a different domain for the loaded view.")
+  // TODO: Better example for using a different domain for the loaded view
   /// Create a ``LoadableView`` that uses the default `ProgressView` for when an item is ``LoadingState/notRequested``.
   /// And uses an `HStack` or a `VStack` with the `ProgressView` along with the `LoadedView` for when an
   /// item is in the ``LoadingState/isLoading(previous:)`` state.
