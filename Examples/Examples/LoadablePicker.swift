@@ -82,11 +82,13 @@ struct LoadablePicker: View {
   let store: StoreOf<UserLoader>
   
   var body: some View {
-    EmptyView()
-//    LoadableView(
-//      store: self.store.scope(state: \.$userPicker, action: UserLoader.Action.loadable),
-//      loaded: UserPickerView.init(store:)
-//    )
+//    EmptyView()
+    LoadableView(
+      self.store.scope(state: \.$userPicker, action: UserLoader.Action.loadable)
+    ) { (store: Store<UserPicker.State, LoadingAction<UserPicker.State>>) in
+      // I'd like this to be a store of `UserPicker`
+      EmptyView()
+    }
   }
   
   struct UserPickerView: View {

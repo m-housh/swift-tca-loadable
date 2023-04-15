@@ -208,6 +208,17 @@ public protocol LoadableAction<State> {
   static func loadable(_ action: LoadingAction<State>) -> Self
 }
 
+extension LoadableAction {
+  
+  public static var load: Self {
+    .loadable(.load)
+  }
+  
+  public static func receiveLoaded(_ result: TaskResult<State>) -> Self {
+    .loadable(.receiveLoaded(result))
+  }
+}
+
 extension LoadableReducer where Action: LoadableAction, Child == Action.State {
   
   public init(state toLoadableState: WritableKeyPath<State, LoadingState<Child>>) {
