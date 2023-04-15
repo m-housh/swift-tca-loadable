@@ -14,30 +14,35 @@ test-macos:
 		set -o pipefail && \
 		xcodebuild test \
 				-scheme swift-tca-loadable-Package \
+				-configuration "$(CONFIG)" \
 				-destination platform="$(PLATFORM_MACOS)"
 
 test-ios:
 		set -o pipefail && \
 		xcodebuild test \
 				-scheme swift-tca-loadable-Package \
+				-configuration "$(CONFIG)" \
 				-destination platform="$(PLATFORM_IOS)"
 
 test-mac-catalyst:
 		set -o pipefail && \
 		xcodebuild test \
 				-scheme swift-tca-loadable-Package \
+				-configuration "$(CONFIG)" \
 				-destination platform="$(PLATFORM_MAC_CATALYST)"
 
 test-tvos:
 		set -o pipefail && \
 		xcodebuild test \
 				-scheme swift-tca-loadable-Package \
+				-configuration "$(CONFIG)" \
 				-destination platform="$(PLATFORM_TVOS)"
 
 test-watchos:
 		set -o pipefail && \
 		xcodebuild test \
 				-scheme swift-tca-loadable-Package \
+				-configuration "$(CONFIG)" \
 				-destination platform="$(PLATFORM_WATCHOS)"
 
 test-swift:

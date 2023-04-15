@@ -105,7 +105,7 @@ public struct LoadableView<
   ///   - notRequested: The view to show when the state is ``LoadingState/notRequested``
   ///   - isLoading: The view to show when the state is ``LoadingState/isLoading(previous:)``
   public init(
-    store: Store<LoadingState<State>, LoadingAction<State>>,
+    _ store: Store<LoadingState<State>, LoadingAction<State>>,
     autoload: Autoload = .whenNotRequested,
     @ViewBuilder loaded: @escaping (Store<State, LoadingAction<State>>) -> Loaded,
     @ViewBuilder notRequested: @escaping () -> NotRequested,
@@ -117,9 +117,17 @@ public struct LoadableView<
     self.isLoading = isLoading
     self.loaded = loaded
   }
+  
+  struct ViewState: Equatable {
+    let hasLoaded: Bool
+    
+    init(state: LoadingState<State>) {
+      self.hasLoaded = state == .notRequested
+    }
+  }
 
   public var body: some View {
-    WithViewStore(self.store, observe: { $0 }) { viewStore in
+    WithViewStore(self.store, observe: ViewState.init(state:)) { viewStore in
       SwitchStore(self.store) {
         CaseLet<
           LoadingState<State>,
@@ -156,7 +164,7 @@ public struct LoadableView<
         }
       }
       .onAppear {
-        if self.autoload.shouldLoad(viewStore.state) {
+        if self.autoload.shouldLoad(viewStore.hasLoaded) {
           viewStore.send(.load)
         }
       }
@@ -177,14 +185,14 @@ public enum Autoload: Equatable {
   /// Only call load when the state is ``LoadingState/notRequested``.
   case whenNotRequested
 
-  func shouldLoad<V: Equatable>(_ state: LoadingState<V>) -> Bool {
+  func shouldLoad(_ state: Bool) -> Bool {
     switch self {
     case .always:
       return true
     case .never:
       return false
     case .whenNotRequested:
-      return state == .notRequested
+      return state
     }
   }
 }
