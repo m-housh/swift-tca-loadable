@@ -42,7 +42,7 @@ public struct LoadableState<Value> {
     }
   }
 
-  var loadingState: LoadingState<Value> {
+  public var loadingState: LoadingState<Value> {
     _read { yield self.boxedValue.first ?? .notRequested }
     _modify {
       var state = self.boxedValue.first ?? .notRequested
@@ -127,6 +127,12 @@ public enum LoadingState<Value> {
       return value
     }
   }
+  
+  @discardableResult
+  public mutating func setIsLoading() -> Self {
+    self = .isLoading(previous: rawValue)
+    return self
+  }
 }
 extension LoadingState: Equatable where Value: Equatable {}
 extension LoadingState: Hashable where Value: Hashable {}
@@ -163,8 +169,67 @@ public enum LoadingAction<Value> {
 }
 extension LoadingAction: Equatable where Value: Equatable {}
 
-extension ReducerProtocol {
+public struct LoadableReducer<State, Action, Child>: ReducerProtocol {
+  
+  @usableFromInline
+  let toLoadableState: WritableKeyPath<State, LoadingState<Child>>
+  
+  @usableFromInline
+  let toChildAction: CasePath<Action, LoadingAction<Child>>
+  
+  public init(
+    state toLoadableState: WritableKeyPath<State, LoadingState<Child>>,
+    action toChildAction: CasePath<Action, LoadingAction<Child>>
+  ) {
+    self.toLoadableState = toLoadableState
+    self.toChildAction = toChildAction
+  }
+  
+  @inlinable
+  public func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
+    guard let loadingAction = toChildAction.extract(from: action)
+    else { return .none }
+    
+    switch loadingAction {
+    case .load:
+      state[keyPath: toLoadableState].setIsLoading()
+      return .none
+    case .receiveLoaded(.success(let child)):
+      state[keyPath: toLoadableState] = .loaded(child)
+      return .none
+    case .receiveLoaded:
+      return .none
+    }
+  }
+}
 
+public protocol LoadableAction<State> {
+  associatedtype State
+  static func loadable(_ action: LoadingAction<State>) -> Self
+}
+
+extension LoadableReducer where Action: LoadableAction, Child == Action.State {
+  
+  public init(state toLoadableState: WritableKeyPath<State, LoadingState<Child>>) {
+    self.init(
+      state: toLoadableState,
+      action: /Action.loadable
+    )
+  }
+}
+
+extension EffectPublisher where Action: LoadableAction, Failure == Never {
+  public static func load(_ loader: @escaping () async throws -> Action.State) -> Self {
+    return .task {
+      .loadable(
+        await .receiveLoaded(TaskResult { try await loader() })
+      )
+    }
+  }
+}
+
+extension ReducerProtocol {
+  
   /// Enhances a reducer with the default ``LoadingAction`` implementations.
   ///
   /// The default implementation will handle setting the ``LoadingState`` appropriately
@@ -177,6 +242,7 @@ extension ReducerProtocol {
   /// - Parameters:
   ///   - toLoadableState: The key path from the parent state to a ``LoadingState`` instance.
   ///   - toLoadableAction: The case path from the parent action to a ``LoadingAction`` case.
+  @inlinable
   public func loadable<ChildState>(
     state toLoadableState: WritableKeyPath<State, LoadingState<ChildState>>,
     action toLoadableAction: CasePath<Action, LoadingAction<ChildState>>
@@ -188,6 +254,86 @@ extension ReducerProtocol {
     )
   }
 }
+
+extension ReducerProtocol where Action: LoadableAction {
+  
+  public func loadable<Child>(
+    state toLoadableState: WritableKeyPath<State, LoadingState<Child>>
+  ) -> _LoadableReducer<Self, Child> where Child == Action.State {
+    .init(
+      parent: self,
+      toLoadableState: toLoadableState,
+      toLoadableAction: /Action.loadable(_:)
+    )
+  }
+  
+//  public func loadable<Child: ReducerProtocol>(
+//    state toLoadableState: WritableKeyPath<State, LoadingState<Child.State>>,
+//    toChildAction: CasePath<Action, Child.Action>,
+//    @ReducerBuilder<Child.State, Child.Action> child: () -> Child
+//  ) -> _LoadableChildReducer<Self, Child.State, Child.Action, Child>
+//  where Child.State == Action.State, Child.State: Equatable {
+//    .init(
+//      parent: self,
+//      child: child(),
+//      toLoadableState: toLoadableState,
+//      toLoadableAction: /Action.loadable(_:),
+//      toChildState: { $0[keyPath: toLoadableState].rawValue },
+//      toChildAction: toChildAction
+//    )
+//  }
+}
+
+//public struct _LoadableChildReducer<Parent: ReducerProtocol, ChildState, ChildAction, Child: ReducerProtocol>: ReducerProtocol
+//where ChildState: Equatable, Child.State == ChildState, Child.Action == ChildAction {
+//
+//  let parent: Parent
+//  let child: Child
+//  let toLoadableState: WritableKeyPath<Parent.State, LoadingState<ChildState>>
+//  let toLoadableAction: CasePath<Parent.Action, LoadingAction<ChildState>>
+//  let toChildState: (Parent.State) -> ChildState?
+//  let toChildAction: CasePath<Parent.Action, ChildAction>
+//
+//
+//  public func reduce(into state: inout Parent.State, action: Parent.Action) -> EffectTask<Parent.Action> {
+//
+//    let loadableReducer = _LoadableReducer(
+//      parent: self.parent,
+//      toLoadableState: self.toLoadableState,
+//      toLoadableAction: self.toLoadableAction
+//    )
+//
+//    let loadableEffects = loadableReducer.reduce(into: &state, action: action)
+//
+//    let childState = toChildState(state)
+//    let childEffects: EffectTask<Parent.Action>
+//    let childAction = toChildAction.extract(from: action)
+//
+//    switch (childState, childAction) {
+//    case (.some(var child), .some(let childAction)):
+//      childEffects = self.child.reduce(into: &child, action: childAction)
+//        .map { toChildAction.embed($0) }
+//    case (.none, .some):
+//      XCTFail(
+//      """
+//      A child action was received before the state was loaded.
+//
+//      This is considered an application bug.
+//      """
+//      )
+//      childEffects = .none
+//    case (.none, .none):
+//      childEffects = .none
+//    case (.some(_), .none):
+//      childEffects = .none
+//    }
+//
+//    return .merge(
+//      loadableEffects,
+//      childEffects
+//    )
+//  }
+//}
 
 /// The concrete reducer used for the default loading implementation.
 ///
@@ -203,6 +349,17 @@ public struct _LoadableReducer<Parent: ReducerProtocol, Value: Equatable>: Reduc
 
   @usableFromInline
   let toLoadableAction: CasePath<Parent.Action, LoadingAction<Value>>
+  
+  @inlinable
+  init(
+    parent: Parent,
+    toLoadableState: WritableKeyPath<Parent.State, LoadingState<Value>>,
+    toLoadableAction: CasePath<Parent.Action, LoadingAction<Value>>
+  ) {
+    self.parent = parent
+    self.toLoadableState = toLoadableState
+    self.toLoadableAction = toLoadableAction
+  }
 
   @inlinable
   public func reduce(

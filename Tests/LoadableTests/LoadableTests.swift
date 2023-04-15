@@ -13,6 +13,20 @@ struct User: Codable, Identifiable, Equatable {
       name: "Blob"
     )
   }
+  
+  static var mocks: [Self] {
+    @Dependency(\.uuid) var uuid;
+    return [
+      .init(id: uuid(), name: "Blob"),
+      .init(id: uuid(), name: "Blob Jr."),
+      .init(id: uuid(), name: "Blob Sr."),
+    ]
+  }
+}
+
+extension IdentifiedArray where ID == User.ID, Element == User {
+  
+  static var mocks: Self { .init(uniqueElements: User.mocks) }
 }
 
 struct EnvisionedUsage: ReducerProtocol {
@@ -30,6 +44,65 @@ struct EnvisionedUsage: ReducerProtocol {
   }
 }
 
+struct UserPicker: ReducerProtocol {
+  
+  struct State: Equatable {
+    @BindingState var selected: User.ID?
+    var users: IdentifiedArrayOf<User>
+  }
+  
+  enum Action: Equatable, BindableAction {
+    case binding(BindingAction<State>)
+  }
+  
+  var body: some ReducerProtocolOf<Self> {
+    BindingReducer()
+  }
+}
+
+struct UserLoader: ReducerProtocol {
+  struct State: Equatable {
+    @LoadableState var userPicker: UserPicker.State?
+  }
+  
+  enum Action: Equatable, LoadableAction {
+    case loadable(LoadingAction<UserPicker.State>)
+    case picker(UserPicker.Action)
+  }
+  
+  var body: some ReducerProtocolOf<Self> {
+    
+    Reduce { state, action in
+      switch action {
+      case .loadable(.load):
+        return .load { .init(users: .mocks) }
+      case .loadable:
+        return .none
+      case .picker:
+        return .none
+      }
+    }
+//    .loadable(state: \.$userPicker, toChildAction: /Action.picker) {
+//      UserPicker()
+//    }
+    .loadable(state: \.$userPicker)
+    .ifLet(\.userPicker, action: /Action.picker) {
+      UserPicker()
+    }
+  }
+}
+
+//let reducer = EmptyReducer<UserLoader.State, UserLoader.Action>()
+//  .loadable(
+//    state: \.$userPicker,
+//    toChildAction: /UserLoader.Action.picker
+//  ) {
+//    UserPicker()
+//  }
+//  .loadable(state: \.$userPicker)
+//  .ifLet(\.userPicker, action: /UserLoader.Action.picker) {
+//    UserPicker()
+//  }
 
 @MainActor
 final class TCA_LoadableTests: XCTestCase {
@@ -81,5 +154,30 @@ final class TCA_LoadableTests: XCTestCase {
 
     let string = String(data: encoded, encoding: .utf8)!
     XCTAssertEqual(string, json)
+  }
+  
+  func test_userLoader() async {
+    let store = TestStore(
+      initialState: UserLoader.State(),
+      reducer: UserLoader()
+    ) {
+      $0.uuid = .incrementing
+    }
+    
+    let mocks = withDependencies {
+      $0.uuid = .incrementing
+    } operation: {
+      return IdentifiedArrayOf<User>.mocks
+    }
+    
+    await store.send(.loadable(.load)) {
+      $0.$userPicker = .isLoading(previous: nil)
+    }
+    await store.receive(.loadable(.receiveLoaded(.success(.init(users: mocks)))), timeout: 1) {
+      $0.userPicker = .init(users: mocks)
+    }
+    await store.send(.picker(.set(\.$selected, mocks[0].id))) {
+      $0.userPicker?.selected = mocks[0].id
+    }
   }
 }

@@ -76,6 +76,9 @@ import SwiftUI
 ///```
 ///
 ///
+#warning("Needs to be generic over the loaded action / needs a transformation.")
+// Need to be able to have a generic action for the loaded type, so that it can
+// handle it's own custom logic, when nested.
 public struct LoadableView<
   State: Equatable,
   NotRequested: View,
