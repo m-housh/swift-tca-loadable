@@ -55,12 +55,18 @@ struct UserLoader: ReducerProtocol {
     case picker(UserPicker.Action)
   }
   
+  @Dependency(\.continuousClock) var clock;
+
   var body: some ReducerProtocolOf<Self> {
     
     Reduce { state, action in
       switch action {
       case .loadable(.load):
-        return .load { .init(users: .mocks) }
+        return .load {
+          // Simulate loading the users from a remote.
+          try await clock.sleep(for: .seconds(2))
+          return .init(users: .mocks)
+        }
       case .loadable:
         return .none
       case .picker:
@@ -82,12 +88,11 @@ struct LoadablePicker: View {
   let store: StoreOf<UserLoader>
   
   var body: some View {
-//    EmptyView()
     LoadableView(
-      self.store.scope(state: \.$userPicker, action: UserLoader.Action.loadable)
-    ) { (store: Store<UserPicker.State, LoadingAction<UserPicker.State>>) in
-      // I'd like this to be a store of `UserPicker`
-      EmptyView()
+      self.store.scope(state: \.$userPicker),
+      loadedAction: UserLoader.Action.picker
+    ) {
+      UserPickerView(store: $0)
     }
   }
   
@@ -95,7 +100,16 @@ struct LoadablePicker: View {
     let store: StoreOf<UserPicker>
     
     var body: some View {
-      EmptyView()
+      WithViewStore(self.store, observe: { $0 }) { viewStore in
+        VStack {
+          Picker("User", selection: viewStore.binding(\.$selected)) {
+            ForEach(viewStore.users) {
+              Text($0.name)
+                .tag(Optional($0.id))
+            }
+          }
+        }
+      }
     }
   }
 }

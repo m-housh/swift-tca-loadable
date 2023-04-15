@@ -59,7 +59,7 @@ struct ContentView: View {
     VStack {
       WithViewStore(store, observe: { $0 }) { viewStore in
         LoadableView(
-          self.store.scope(state: \.$int, action: App.Action.loadable),
+          self.store.scope(state: \.$int),
           orientation: viewStore.orientation
         ) {
           WithViewStore($0, observe: { $0 }) { viewStore in
