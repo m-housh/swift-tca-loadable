@@ -83,7 +83,8 @@ struct UserLoader: ReducerProtocol {
     
     Reduce { state, action in
       switch action {
-      case .loadable(.load):
+//      case .loadable(.load):
+      case .load:
         return .load { try await .init(users: loadUsers()) }
       case .loadable:
         return .none

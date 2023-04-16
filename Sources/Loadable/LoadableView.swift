@@ -486,7 +486,7 @@ where
   ///    var body: some View {
   ///      VStack {
   ///        WithViewStore(store, observe: { $0 }) { viewStore in
-  ///          LoadableView(store: store.scope(state: \.$int, action: Preview.Action.int)) {
+  ///          LoadableView(store.scope(state: \.$int, action: Preview.Action.int)) {
   ///            WithViewStore($0, observe: { $0 }) { viewStore in
   ///              Text("Loaded: \(viewStore.state)")
   ///            }
