@@ -2,6 +2,15 @@
 <Workspace
    version = "1.0">
    <FileRef
+      location = "group:Sources/Loadable/Documentation.docc/Articles/AdvancedUsage.md">
+   </FileRef>
+   <FileRef
+      location = "group:GeneralUsage.md">
+   </FileRef>
+   <FileRef
+      location = "group:ErrorHandling.md">
+   </FileRef>
+   <FileRef
       location = "group:Examples/Examples.xcodeproj">
    </FileRef>
    <FileRef

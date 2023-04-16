@@ -111,9 +111,26 @@ struct ContentView: View {
 }
 ```
 
+## Articles
+- <doc:GeneralUsage>
+- <doc:AdvancedUsage>
+- <doc:ErrorHandling>
+
 ## Topics
 
+### State
 - ``LoadableState``
 - ``LoadingState``
+
+### Actions
 - ``LoadingAction``
+- ``LoadableAction``
+
+### Reducers
+- ``LoadableReducer``
+
+### Views
 - ``LoadableView``
+- ``Autoload``
+- ``IsLoadingOrientation``
+- ``IsLoadingView``

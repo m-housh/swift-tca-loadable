@@ -432,14 +432,20 @@ extension ReducerProtocol {
     state toLoadableState: WritableKeyPath<State, LoadableState<ChildState>>,
     action toLoadingAction: CasePath<Action, LoadingAction<ChildState>>,
     then toChildAction: CasePath<Action, ChildAction>,
-    @ReducerBuilder<ChildState, ChildAction> child: () -> Child
+    @ReducerBuilder<ChildState, ChildAction> child: () -> Child,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
   ) -> _LoadableChildReducer<Self, ChildState, ChildAction, Child>
   where ChildState == Child.State, ChildAction == Child.Action {
     .init(
       parent: self,
       child: child(),
       loadableReducer: .init(state: toLoadableState, action: toLoadingAction),
-      toChildAction: toChildAction
+      toChildAction: toChildAction,
+      file: file,
+      fileID: fileID,
+      line: line
     )
   }
 
@@ -555,14 +561,20 @@ extension ReducerProtocol where Action: LoadableAction {
   public func loadable<ChildState: Equatable, ChildAction: Equatable, Child: ReducerProtocol>(
     state toLoadableState: WritableKeyPath<State, LoadableState<ChildState>>,
     then toChildAction: CasePath<Action, ChildAction>,
-    @ReducerBuilder<ChildState, ChildAction> child: () -> Child
+    @ReducerBuilder<ChildState, ChildAction> child: () -> Child,
+    file: StaticString = #file,
+    fileID: StaticString = #fileID,
+    line: UInt = #line
   ) -> _LoadableChildReducer<Self, ChildState, ChildAction, Child>
   where ChildState == Child.State, ChildAction == Child.Action, Action.State == ChildState {
     .init(
       parent: self,
       child: child(),
       loadableReducer: .init(state: toLoadableState, action: /Action.loadable),
-      toChildAction: toChildAction
+      toChildAction: toChildAction,
+      file: file,
+      fileID: fileID,
+      line: line
     )
   }
 
@@ -716,7 +728,7 @@ public struct _LoadableChildReducer<
     case (.none, .some(let action)):
       XCTFail(
         """
-        A child action at \(self.fileID):\(self.line) was sent when the child value value
+        A child action at \(self.fileID):\(self.line) was sent when the child value
         has not yet been loaded or is nil.
 
         Action: \(debugCaseOutput(action))
