@@ -128,7 +128,7 @@ public struct _LoadableReducer<Parent: Reducer, Value>: Reducer {
         break
 
       }
-    } 
+    }
 
     return parentEffects
   }

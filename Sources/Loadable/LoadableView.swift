@@ -182,7 +182,7 @@ extension LoadableView
 where
   NotRequested == ProgressView<EmptyView, EmptyView>
 {
-  
+
   /// Create a ``LoadableView`` that uses the default `ProgressView` for when an item is ``LoadingState/notRequested``.
   /// And uses an `HStack` or a `VStack` with the `ProgressView` and the `LoadedView` for when an
   /// item is in the ``LoadingState/isLoading(previous:)`` state.
@@ -289,7 +289,7 @@ where
     let notRequested = { (_: Bool) in ProgressView() }
     self.autoload = autoload
     self.store = store
-    self.notRequested =  { notRequested(false) }
+    self.notRequested = { notRequested(false) }
     self.isLoading = {
       IsLoadingView(
         state: $0,
@@ -307,23 +307,23 @@ where
 /// is ``LoadingState/isLoading(previous:)``.
 ///
 public enum IsLoadingOrientation: Equatable {
-  
+
   /// Embeds previously loaded values in an `HStack` when the state is ``LoadingState/isLoading(previous:)``
   case horizontal(Horizontal = .leading)
-  
+
   /// Embeds previously loaded values in a `VStack` when the state is ``LoadingState/isLoading(previous:)``
   case vertical(Vertical = .above)
-  
+
   /// Represents the orientation of the not requested view in relation to the loaded view, when shown in an `HStack`.
   public enum Horizontal: Equatable {
     case leading, trailing
   }
-  
+
   /// Represents the orientation of the not requested view in relation to the loaded view, when shown in a `VStack`.
   public enum Vertical: Equatable {
     case above, below
   }
-  
+
 }
 
 /// A view that will show the `NotRequested` and `Loaded` views in an `HStack` or a `VStack` based on if a
@@ -357,7 +357,7 @@ public struct IsLoadingView<State, NotRequested: View, Loaded: View>: View {
       self.notRequested(false)
     }
   }
-  
+
   @ViewBuilder
   func buildView(
     _ state: State
