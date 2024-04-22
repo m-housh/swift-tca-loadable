@@ -16,35 +16,35 @@ clean:
 test-macos: clean
 		set -o pipefail && \
 		xcodebuild test \
-				-skipMarcoValidation \
+				-skipMacroValidation \
 				-scheme swift-tca-loadable-Package \
 				-destination platform="$(PLATFORM_MACOS)"
 
 test-ios: clean
 		set -o pipefail && \
 		xcodebuild test \
-				-skipMarcoValidation \
+				-skipMacroValidation \
 				-scheme swift-tca-loadable-Package \
 				-destination platform="$(PLATFORM_IOS)"
 
 test-mac-catalyst: clean
 		set -o pipefail && \
 		xcodebuild test \
-				-skipMarcoValidation \
+				-skipMacroValidation \
 				-scheme swift-tca-loadable-Package \
 				-destination platform="$(PLATFORM_MAC_CATALYST)"
 
 test-tvos: clean
 		set -o pipefail && \
 		xcodebuild test \
-				-skipMarcoValidation \
+				-skipMacroValidation \
 				-scheme swift-tca-loadable-Package \
 				-destination platform="$(PLATFORM_TVOS)"
 
 test-watchos: clean
 		set -o pipefail && \
 		xcodebuild test \
-				-skipMarcoValidation \
+				-skipMacroValidation \
 				-scheme swift-tca-loadable-Package \
 				-destination platform="$(PLATFORM_WATCHOS)"
 
