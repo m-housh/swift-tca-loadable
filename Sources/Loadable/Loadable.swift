@@ -171,7 +171,7 @@ public enum LoadingAction<State, Action> {
 }
 extension LoadingAction: Equatable where State: Equatable, Action: Equatable {}
 
-extension ReducerProtocol {
+extension Reducer {
 
   /// Enhances a reducer with the default ``LoadingAction`` implementations.
   ///
@@ -185,7 +185,7 @@ extension ReducerProtocol {
   /// - Parameters:
   ///   - toLoadableState: The key path from the parent state to a ``LoadingState`` instance.
   ///   - toLoadableAction: The case path from the parent action to a ``LoadingAction`` case.
-  public func loadable<Child: ReducerProtocol>(
+  public func loadable<Child: Reducer>(
     state toLoadableState: WritableKeyPath<State, LoadingState<Child.State>>,
     action toLoadableAction: CasePath<Action, LoadingAction<Child.State, Child.Action>>,
     @ReducerBuilder<Child.State, Child.Action> then child: () -> Child
@@ -216,7 +216,7 @@ extension ReducerProtocol {
 ///
 /// This should not be used directly, instead use the ``Reducer/loadable``.
 ///
-public struct _LoadableReducer<Parent: ReducerProtocol, Child: ReducerProtocol>: ReducerProtocol {
+public struct _LoadableReducer<Parent: Reducer, Child: Reducer>: Reducer {
 
   @usableFromInline
   let parent: Parent
@@ -234,11 +234,11 @@ public struct _LoadableReducer<Parent: ReducerProtocol, Child: ReducerProtocol>:
   public func reduce(
     into state: inout Parent.State,
     action: Parent.Action
-  ) -> EffectTask<Parent.Action> {
+  ) -> Effect<Parent.Action> {
     let currentState = state[keyPath: toLoadableState]
 
-    let parentEffects: EffectTask<Parent.Action> = self.parent.reduce(into: &state, action: action)
-    let childEffects: EffectTask<Parent.Action>
+    let parentEffects: Effect<Parent.Action> = self.parent.reduce(into: &state, action: action)
+    let childEffects: Effect<Parent.Action>
 
     if let loadableAction = toLoadableAction.extract(from: action) {
       switch (currentState.rawValue, loadableAction) {

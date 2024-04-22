@@ -77,24 +77,24 @@ import SwiftUI
 ///
 ///
 public struct LoadableView<
-  Reducer: ReducerProtocol,
+  Loadable: Reducer,
   NotRequested: View,
   Loaded: View,
   IsLoading: View
->: View where Reducer.State: Equatable, Reducer.Action: Equatable {
+>: View where Loadable.State: Equatable, Loadable.Action: Equatable {
 
-  public typealias State = Reducer.State
-  public typealias Action = Reducer.Action
+  public typealias State = Loadable.State
+  public typealias Action = Loadable.Action
 
   private let autoload: Autoload
 
-  private let isLoading: (Store<Reducer.State?, LoadingAction<Reducer.State, Reducer.Action>>) -> IsLoading
+  private let isLoading: (Store<Loadable.State?, LoadingAction<Loadable.State, Loadable.Action>>) -> IsLoading
 
-  private let loaded: (Store<Reducer.State, LoadingAction<Reducer.State, Reducer.Action>>) -> Loaded
+  private let loaded: (Store<Loadable.State, LoadingAction<Loadable.State, Loadable.Action>>) -> Loaded
 
   private let notRequested: () -> NotRequested
 
-  private let store: Store<LoadingState<Reducer.State>, LoadingAction<Reducer.State, Reducer.Action>>
+  private let store: Store<LoadingState<Loadable.State>, LoadingAction<Loadable.State, Loadable.Action>>
 
   /// Create a ``LoadableView`` without any default view implementations for the ``LoadingState``.
   ///
@@ -105,11 +105,11 @@ public struct LoadableView<
   ///   - notRequested: The view to show when the state is ``LoadingState/notRequested``
   ///   - isLoading: The view to show when the state is ``LoadingState/isLoading(previous:)``
   public init(
-    store: Store<LoadingState<Reducer.State>, LoadingAction<Reducer.State, Reducer.Action>>,
+    store: Store<LoadingState<Loadable.State>, LoadingAction<Loadable.State, Loadable.Action>>,
     autoload: Autoload = .whenNotRequested,
-    @ViewBuilder loaded: @escaping (Store<Reducer.State, LoadingAction<Reducer.State, Reducer.Action>>) -> Loaded,
+    @ViewBuilder loaded: @escaping (Store<Loadable.State, LoadingAction<Loadable.State, Loadable.Action>>) -> Loaded,
     @ViewBuilder notRequested: @escaping () -> NotRequested,
-    @ViewBuilder isLoading: @escaping (Store<Reducer.State?, LoadingAction<Reducer.State, Reducer.Action>>) -> IsLoading
+    @ViewBuilder isLoading: @escaping (Store<Loadable.State?, LoadingAction<Loadable.State, Loadable.Action>>) -> IsLoading
   ) {
     self.autoload = autoload
     self.store = store
@@ -119,48 +119,50 @@ public struct LoadableView<
   }
 
   public var body: some View {
-    WithViewStore(self.store, observe: { $0 }) { viewStore in
-      SwitchStore(self.store) {
-        CaseLet<
-          LoadingState<State>,
-          LoadingAction<State, Action>,
-          Void,
-          LoadingAction<Reducer.State, Reducer.Action>,
-          NotRequested
-        >(
-          state: /LoadingState<State>.notRequested
-        ) { _ in
-          notRequested()
-        }
-        CaseLet<
-          LoadingState<State>,
-          LoadingAction<State, Action>,
-          State?,
-          LoadingAction<State, Action>,
-          IsLoading
-        >(
-          state: /LoadingState<State>.isLoading(previous:)
-        ) {
-          isLoading($0)
-        }
-        CaseLet<
-          LoadingState<State>,
-          LoadingAction<State, Action>,
-          State,
-          LoadingAction<State, Action>,
-          Loaded
-        >(
-          state: /LoadingState<State>.loaded
-        ) {
-          loaded($0)
-        }
-      }
-      .onAppear {
-        if self.autoload.shouldLoad(viewStore.state) {
-          viewStore.send(.load)
-        }
-      }
-    }
+    #warning("Fix me.")
+    Text("Fix me.")
+//    WithViewStore(self.store, observe: { $0 }) { viewStore in
+//      SwitchStore(self.store) {
+//        CaseLet<
+//          LoadingState<State>,
+//          LoadingAction<State, Action>,
+//          Void,
+//          LoadingAction<Reducer.State, Reducer.Action>,
+//          NotRequested
+//        >(
+//          state: /LoadingState<State>.notRequested
+//        ) { _ in
+//          notRequested()
+//        }
+//        CaseLet<
+//          LoadingState<State>,
+//          LoadingAction<State, Action>,
+//          State?,
+//          LoadingAction<State, Action>,
+//          IsLoading
+//        >(
+//          state: /LoadingState<State>.isLoading(previous:)
+//        ) {
+//          isLoading($0)
+//        }
+//        CaseLet<
+//          LoadingState<State>,
+//          LoadingAction<State, Action>,
+//          State,
+//          LoadingAction<State, Action>,
+//          Loaded
+//        >(
+//          state: /LoadingState<State>.loaded
+//        ) {
+//          loaded($0)
+//        }
+//      }
+//      .onAppear {
+//        if self.autoload.shouldLoad(viewStore.state) {
+//          viewStore.send(.load)
+//        }
+//      }
+//    }
   }
 }
 
