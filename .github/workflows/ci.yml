@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     name: MacOS
-    runs-on: macos-latest
+    runs-on: macos-14
     strategy:
       matrix:
         xcode: ['15.2']
