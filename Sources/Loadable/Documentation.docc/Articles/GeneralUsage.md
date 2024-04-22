@@ -110,7 +110,7 @@ more clear in your pattern matching, and use the properties on the root in your 
 ## Reducers
 
 The library ships with the ``LoadableReducer`` however it is more common to use one of the
-method extensions on the ``ReducerProtocol``.  When your action type conforms to the
+method extensions on the ``Reducer``.  When your action type conforms to the
 ``LoadableAction`` type the methods are more ergonomic.
 
 #### Example

@@ -30,7 +30,7 @@ let package = Package(
 ----------
 
 Version 0.3.+ brings breaking changes from the previous versions. Version `0.3.*` updates to using the
-`ReducerProtocol` from the composable architecture.
+`Reducer` from the composable architecture.
  
 ## Basic Usage
 ----------------

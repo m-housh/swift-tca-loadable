@@ -2,111 +2,12 @@ import CasePaths
 import ComposableArchitecture
 import Foundation
 
-/// A property wrapper that wraps an item in a ``LoadingState`` that can be loaded from a remote process.
-///
-/// `@LoadableState var int: Int?`
-///
-/// See ``LoadableView`` for a more concrete usage.
-///
-@dynamicMemberLookup
-@propertyWrapper
-public struct LoadableState<Value> {
-
-  /// Storage for the loading state.
-  private var boxedValue: [LoadingState<Value>]
-
-  /// Create a new ``LoadableState`` wrapping the passed in value (generally nil until loaded).
-  ///
-  /// - Parameters:
-  ///   - wrappedValue: The value type that is loadable.
-  public init(wrappedValue: Value?) {
-    self.boxedValue = wrappedValue.map { [.loaded($0)] } ?? []
-  }
-
-  /// Access the wrapped value if it's available / been loaded.
-  ///
-  public var wrappedValue: Value? {
-    _read { yield self.boxedValue.first?.rawValue }
-    _modify {
-      var state = self.boxedValue.first?.rawValue
-      yield &state
-      switch (state, self.boxedValue.isEmpty) {
-      case (nil, true):
-        return
-      case (nil, false):
-        self.boxedValue = []
-      case let (.some(state), true):
-        self.boxedValue.insert(.loaded(state), at: 0)
-      case let (.some(state), false):
-        self.boxedValue[0] = .loaded(state)
-      }
-    }
-  }
-
-  /// Access to the ``LoadingState``.
-  public var loadingState: LoadingState<Value> {
-    _read { yield self.boxedValue.first ?? .notRequested }
-    _modify {
-      var state = self.boxedValue.first ?? .notRequested
-      yield &state
-      switch self.boxedValue.isEmpty {
-      case (true):
-        self.boxedValue.insert(state, at: 0)
-      case (false):
-        self.boxedValue[0] = state
-      }
-    }
-  }
-
-  public var projectedValue: Self {
-    get { self }
-    set { self = newValue }
-    _modify { yield &self }
-  }
-
-  public subscript<A>(
-    dynamicMember keyPath: WritableKeyPath<Value, A>
-  ) -> A? {
-    get { self.wrappedValue?[keyPath: keyPath] }
-    set {
-      guard self.wrappedValue != nil,
-        let newValue
-      else { return }
-      self.wrappedValue![keyPath: keyPath] = newValue
-    }
-  }
-
-  var _id: StableID? {
-    self.wrappedValue.map(StableID.init(base:))
-  }
-
-  public var id: AnyHashable {
-    self._id
-  }
-}
-extension LoadableState: Equatable where Value: Equatable {}
-extension LoadableState: Hashable where Value: Hashable {}
-extension LoadableState: Identifiable where Value: Identifiable {}
-
-extension LoadableState: Decodable where Value: Decodable {
-  public init(from decoder: Decoder) throws {
-    do {
-      self.init(wrappedValue: try decoder.singleValueContainer().decode(Value.self))
-    } catch {
-      self.init(wrappedValue: try .init(from: decoder))
-    }
-  }
-}
-
-extension LoadableState: Encodable where Value: Encodable {
-  public func encode(to encoder: Encoder) throws {
-    try self.loadingState.encode(to: encoder)
-  }
-}
-
 /// Represents different states of a loadable value.
 ///
-public enum LoadingState<Value> {
+///
+@ObservableState
+@CasePathable
+public enum LoadableState<Value> {
 
   /// Set when the value has not been requested / loaded yet.
   case notRequested
@@ -138,9 +39,9 @@ public enum LoadingState<Value> {
     return self
   }
 }
-extension LoadingState: Equatable where Value: Equatable {}
-extension LoadingState: Hashable where Value: Hashable {}
-extension LoadingState: Decodable where Value: Decodable {
+extension LoadableState: Equatable where Value: Equatable {}
+extension LoadableState: Hashable where Value: Hashable {}
+extension LoadableState: Decodable where Value: Decodable {
   public init(from decoder: Decoder) throws {
     do {
       let decoded = try decoder.singleValueContainer().decode(Value.self)
@@ -151,7 +52,7 @@ extension LoadingState: Decodable where Value: Decodable {
     }
   }
 }
-extension LoadingState: Encodable where Value: Encodable {
+extension LoadableState: Encodable where Value: Encodable {
   public func encode(to encoder: Encoder) throws {
     do {
       var container = encoder.singleValueContainer()
@@ -165,7 +66,9 @@ extension LoadingState: Encodable where Value: Encodable {
 // MARK: - Actions
 
 /// Represents the actions for a loadable value.
-public enum LoadingAction<Value> {
+///
+@CasePathable
+public enum LoadableAction<Value> {
 
   /// Represents when the value should be loaded from a remote source.
   case load
@@ -173,7 +76,7 @@ public enum LoadingAction<Value> {
   /// Receive a loaded value from a remote source.
   case receiveLoaded(TaskResult<Value>)
 }
-extension LoadingAction: Equatable where Value: Equatable {}
+extension LoadableAction: Equatable where Value: Equatable {}
 
 /// Represents the actions for a loadable value.  When you mark your `Reducer`'s action as
 /// a ``LoadableAction``, it unlocks some conveniences for working with loadable values.
@@ -182,12 +85,12 @@ extension LoadingAction: Equatable where Value: Equatable {}
 /// In general it is best to use this on your actions instead of relying on the ``LoadingAction``, unless
 /// your reducer is small and focused in only on a loadable type.
 ///
-public protocol LoadableAction<State> {
+public protocol LoadingAction<State>: CasePathable {
   associatedtype State
-  static func loadable(_ action: LoadingAction<State>) -> Self
+  static func loadable(_ action: LoadableAction<State>) -> Self
 }
 
-extension LoadableAction {
+extension LoadingAction {
 
   /// Represents when the value should be loaded from a remote source.
   public static var load: Self {
@@ -200,7 +103,7 @@ extension LoadableAction {
   }
 }
 
-extension EffectPublisher where Action: LoadableAction, Failure == Never {
+extension Effect where Action: LoadingAction {
 
   /// A convenience for calling an asynchronous block of code for a ``LoadableAction`` and wrapping it
   /// into a `TaskResult`, ulitmatily calling the ``LoadableAction/receiveLoaded(_:)`` with the result.
@@ -208,10 +111,10 @@ extension EffectPublisher where Action: LoadableAction, Failure == Never {
   /// - Parameters:
   ///   - task: The asynchronous call that should load the value.
   public static func load(_ task: @escaping () async throws -> Action.State) -> Self {
-    return .task {
-      .loadable(
-        await .receiveLoaded(TaskResult { try await task() })
-      )
+    return .run { send in
+      await send(.loadable(.receiveLoaded(
+        TaskResult { try await task() }
+      )))
     }
   }
 }
@@ -221,11 +124,11 @@ extension EffectPublisher where Action: LoadableAction, Failure == Never {
 /// A `Reducer` for a loadable item.
 ///
 /// This is used for basic use cases, in general / most situations you probably want to use one of the
-/// `loadable` method extension on the `ReducerProtocol` on your `Reduce`.
+/// `loadable` method extension on the `Reducer` on your `Reduce`.
 ///
 /// **Example**
 /// ```swift
-/// struct MyReducer: ReducerProtocol {
+/// struct MyReducer: Reducer {
 ///   struct State: Equatable {
 ///     @LoadableState var int: Int?
 ///   }
@@ -234,7 +137,7 @@ extension EffectPublisher where Action: LoadableAction, Failure == Never {
 ///     case int(LoadingAction<Int>)
 ///   }
 ///
-///   var body: some ReducerProtocolOf<Self> {
+///   var body: some ReducerOf<Self> {
 ///     LoadableReducer(state: \.$int, action: /Action.int)
 ///     Reduce { state, action in
 ///       switch action {
@@ -249,22 +152,22 @@ extension EffectPublisher where Action: LoadableAction, Failure == Never {
 ///
 /// }
 /// ```
-public struct LoadableReducer<State, Action, Child>: ReducerProtocol {
+public struct LoadableReducer<State, Action, Child>: Reducer {
 
   @usableFromInline
   let toLoadableState: WritableKeyPath<State, LoadableState<Child>>
 
   @usableFromInline
-  let toChildAction: CasePath<Action, LoadingAction<Child>>
+  let toChildAction: AnyCasePath<Action, LoadableAction<Child>>
 
   /// Create a ``LoadableReducer`` for a loadable item.
   ///
   /// This is used for basic use cases, in general / most situations you probably want to use one of the
-  /// `loadable` method extension on the `ReducerProtocol` on your `Reduce`.
+  /// `loadable` method extension on the `Reducer` on your `Reduce`.
   ///
   /// **Example**
   /// ```swift
-  /// struct MyReducer: ReducerProtocol {
+  /// struct MyReducer: Reducer {
   ///   struct State: Equatable {
   ///     @LoadableState var int: Int?
   ///   }
@@ -273,7 +176,7 @@ public struct LoadableReducer<State, Action, Child>: ReducerProtocol {
   ///     case int(LoadingAction<Int>)
   ///   }
   ///
-  ///   var body: some ReducerProtocolOf<Self> {
+  ///   var body: some ReducerOf<Self> {
   ///     LoadableReducer(state: \.$int, action: /Action.int)
   ///     Reduce { state, action in
   ///       switch action {
@@ -295,23 +198,23 @@ public struct LoadableReducer<State, Action, Child>: ReducerProtocol {
   @inlinable
   public init(
     state toLoadableState: WritableKeyPath<State, LoadableState<Child>>,
-    action toChildAction: CasePath<Action, LoadingAction<Child>>
+    action toChildAction: CaseKeyPath<Action, LoadableAction<Child>>
   ) {
     self.toLoadableState = toLoadableState
-    self.toChildAction = toChildAction
+    self.toChildAction = AnyCasePath(toChildAction)
   }
 
   @inlinable
-  public func reduce(into state: inout State, action: Action) -> EffectTask<Action> {
+  public func reduce(into state: inout State, action: Action) -> Effect<Action> {
     guard let loadingAction = toChildAction.extract(from: action)
     else { return .none }
 
     switch loadingAction {
     case .load:
-      state[keyPath: toLoadableState].loadingState.setIsLoading()
+      state[keyPath: toLoadableState].setIsLoading()
       return .none
     case .receiveLoaded(.success(let child)):
-      state[keyPath: toLoadableState].loadingState = .loaded(child)
+      state[keyPath: toLoadableState] = .loaded(child)
       return .none
     case .receiveLoaded:
       return .none
@@ -319,16 +222,16 @@ public struct LoadableReducer<State, Action, Child>: ReducerProtocol {
   }
 }
 
-extension LoadableReducer where Action: LoadableAction, Child == Action.State {
+extension LoadableReducer where Action: LoadingAction, Child == Action.State {
 
   /// Create a ``LoadableReducer`` for a loadable item.
   ///
   /// This is used for basic use cases, in general / most situations you probably want to use one of the
-  /// `loadable` method extension on the `ReducerProtocol` on your `Reduce`.
+  /// `loadable` method extension on the `Reducer` on your `Reduce`.
   ///
   /// **Example**
   /// ```swift
-  /// struct MyReducer: ReducerProtocol {
+  /// struct MyReducer: Reducer {
   ///   struct State: Equatable {
   ///     @LoadableState var int: Int?
   ///   }
@@ -337,7 +240,7 @@ extension LoadableReducer where Action: LoadableAction, Child == Action.State {
   ///     case loadable(LoadingAction<Int>)
   ///   }
   ///
-  ///   var body: some ReducerProtocolOf<Self> {
+  ///   var body: some ReducerOf<Self> {
   ///     LoadableReducer(state: \.$int)
   ///     Reduce { state, action in
   ///       switch action {
@@ -355,16 +258,16 @@ extension LoadableReducer where Action: LoadableAction, Child == Action.State {
   ///
   /// - Parameters:
   ///   - toLoadableState: The key path to the ``LoadingState``
-  @inlinable
-  public init(state toLoadableState: WritableKeyPath<State, LoadableState<Child>>) {
-    self.init(
-      state: toLoadableState,
-      action: /Action.loadable
-    )
-  }
+//  @inlinable
+//  public init(state toLoadableState: WritableKeyPath<State, LoadableState<Child>>) {
+//    self.init(
+//      state: toLoadableState,
+//      action: \Action.loadable
+//    )
+//  }
 }
 
-extension ReducerProtocol {
+extension Reducer {
 
   /// Enhances a reducer with the default ``LoadingAction`` implementations and when loaded,
   /// will call the passed in child action and reducer.
@@ -377,7 +280,7 @@ extension ReducerProtocol {
   ///
   /// **Example**
   /// ```swift
-  ///  struct UserPicker: ReducerProtocol {
+  ///  struct UserPicker: Reducer {
   ///
   ///    struct State: Equatable {
   ///      @BindingState var selected: User.ID?
@@ -388,12 +291,12 @@ extension ReducerProtocol {
   ///      case binding(BindingAction<State>)
   ///    }
   ///
-  ///    var body: some ReducerProtocolOf<Self> {
+  ///    var body: some ReducerOf<Self> {
   ///      BindingReducer()
   ///    }
   ///  }
   ///
-  ///  struct UserLoader: ReducerProtocol {
+  ///  struct UserLoader: Reducer {
   ///    struct State: Equatable {
   ///      @LoadableState var userPicker: UserPicker.State?
   ///    }
@@ -403,7 +306,7 @@ extension ReducerProtocol {
   ///      case picker(UserPicker.Action)
   ///    }
   ///
-  ///    var body: some ReducerProtocolOf<Self> {
+  ///    var body: some ReducerOf<Self> {
   ///
   ///      Reduce { state, action in
   ///        switch action {
@@ -427,27 +330,27 @@ extension ReducerProtocol {
   ///   - toLoadingAction: The case path from the parent action to a ``LoadingAction`` case.
   ///   - toChildAction: The action for when the state is loaded.
   ///   - child: The reducer to use when the state is loaded.
-  @inlinable
-  public func loadable<ChildState: Equatable, ChildAction: Equatable, Child: ReducerProtocol>(
-    state toLoadableState: WritableKeyPath<State, LoadableState<ChildState>>,
-    action toLoadingAction: CasePath<Action, LoadingAction<ChildState>>,
-    then toChildAction: CasePath<Action, ChildAction>,
-    @ReducerBuilder<ChildState, ChildAction> child: () -> Child,
-    file: StaticString = #file,
-    fileID: StaticString = #fileID,
-    line: UInt = #line
-  ) -> _LoadableChildReducer<Self, ChildState, ChildAction, Child>
-  where ChildState == Child.State, ChildAction == Child.Action {
-    .init(
-      parent: self,
-      child: child(),
-      loadableReducer: .init(state: toLoadableState, action: toLoadingAction),
-      toChildAction: toChildAction,
-      file: file,
-      fileID: fileID,
-      line: line
-    )
-  }
+//  @inlinable
+//  public func loadable<ChildState: Equatable, ChildAction: Equatable, Child: Reducer>(
+//    state toLoadableState: WritableKeyPath<State, LoadableState<ChildState>>,
+//    action toLoadingAction: CaseKeyPath<Action, LoadableAction<ChildState>>,
+//    then toChildAction: CaseKeyPath<Action, ChildAction>,
+//    @ReducerBuilder<ChildState, ChildAction> child: () -> Child,
+//    file: StaticString = #file,
+//    fileID: StaticString = #fileID,
+//    line: UInt = #line
+//  ) -> _LoadableChildReducer<Self, ChildState, ChildAction, Child>
+//  where ChildState == Child.State, ChildAction == Child.Action {
+//    .init(
+//      parent: self,
+//      child: child(),
+//      loadableReducer: .init(state: toLoadableState, action: toLoadingAction),
+//      toChildAction: AnyCasePath(toChildAction),
+//      file: file,
+//      fileID: fileID,
+//      line: line
+//    )
+//  }
 
   /// Enhances a reducer with the default ``LoadingAction`` implementations.
   ///
@@ -459,7 +362,7 @@ extension ReducerProtocol {
   ///
   /// **Example**
   /// ```swift
-  /// struct MyReducer: ReducerProtocol {
+  /// struct MyReducer: Reducer {
   ///   struct State: Equatable {
   ///     @LoadableState var int: Int?
   ///   }
@@ -468,7 +371,7 @@ extension ReducerProtocol {
   ///     case int(LoadingAction<Int>)
   ///   }
   ///
-  ///   var body: some ReducerProtocolOf<Self> {
+  ///   var body: some ReducerOf<Self> {
   ///     Reduce { state, action in
   ///       switch action {
   ///         case .int(.load):
@@ -489,14 +392,14 @@ extension ReducerProtocol {
   @inlinable
   public func loadable<ChildState: Equatable>(
     state toLoadableState: WritableKeyPath<State, LoadableState<ChildState>>,
-    action toLoadingAction: CasePath<Action, LoadingAction<ChildState>>
+    action toLoadingAction: CaseKeyPath<Action, LoadableAction<ChildState>>
   ) -> LoadableReducer<State, Action, ChildState> {
     .init(state: toLoadableState, action: toLoadingAction)
   }
 
 }
 
-extension ReducerProtocol where Action: LoadableAction {
+extension Reducer where Action: LoadingAction {
   /// Enhances a reducer with the default ``LoadingAction`` implementations and when loaded,
   /// will call the passed in child action and reducer.
   ///
@@ -508,7 +411,7 @@ extension ReducerProtocol where Action: LoadableAction {
   ///
   /// **Example**
   /// ```swift
-  ///  struct UserPicker: ReducerProtocol {
+  ///  struct UserPicker: Reducer {
   ///
   ///    struct State: Equatable {
   ///      @BindingState var selected: User.ID?
@@ -519,12 +422,12 @@ extension ReducerProtocol where Action: LoadableAction {
   ///      case binding(BindingAction<State>)
   ///    }
   ///
-  ///    var body: some ReducerProtocolOf<Self> {
+  ///    var body: some ReducerOf<Self> {
   ///      BindingReducer()
   ///    }
   ///  }
   ///
-  ///  struct UserLoader: ReducerProtocol {
+  ///  struct UserLoader: Reducer {
   ///    struct State: Equatable {
   ///      @LoadableState var userPicker: UserPicker.State?
   ///    }
@@ -534,7 +437,7 @@ extension ReducerProtocol where Action: LoadableAction {
   ///      case picker(UserPicker.Action)
   ///    }
   ///
-  ///    var body: some ReducerProtocolOf<Self> {
+  ///    var body: some ReducerOf<Self> {
   ///
   ///      Reduce { state, action in
   ///        switch action {
@@ -557,26 +460,26 @@ extension ReducerProtocol where Action: LoadableAction {
   ///   - toLoadableState: The key path from the parent state to a ``LoadingState`` instance.
   ///   - toChildAction: The action for when the state is loaded.
   ///   - child: The reducer to use when the state is loaded.
-  @inlinable
-  public func loadable<ChildState: Equatable, ChildAction: Equatable, Child: ReducerProtocol>(
-    state toLoadableState: WritableKeyPath<State, LoadableState<ChildState>>,
-    then toChildAction: CasePath<Action, ChildAction>,
-    @ReducerBuilder<ChildState, ChildAction> child: () -> Child,
-    file: StaticString = #file,
-    fileID: StaticString = #fileID,
-    line: UInt = #line
-  ) -> _LoadableChildReducer<Self, ChildState, ChildAction, Child>
-  where ChildState == Child.State, ChildAction == Child.Action, Action.State == ChildState {
-    .init(
-      parent: self,
-      child: child(),
-      loadableReducer: .init(state: toLoadableState, action: /Action.loadable),
-      toChildAction: toChildAction,
-      file: file,
-      fileID: fileID,
-      line: line
-    )
-  }
+//  @inlinable
+//  public func loadable<ChildState: Equatable, ChildAction: Equatable, Child: Reducer>(
+//    state toLoadableState: WritableKeyPath<State, LoadableState<ChildState>>,
+//    then toChildAction: CaseKeyPath<Action, ChildAction>,
+//    @ReducerBuilder<ChildState, ChildAction> child: () -> Child,
+//    file: StaticString = #file,
+//    fileID: StaticString = #fileID,
+//    line: UInt = #line
+//  ) -> _LoadableChildReducer<Self, ChildState, ChildAction, Child>
+//  where ChildState == Child.State, ChildAction == Child.Action, Action.State == ChildState {
+//    .init(
+//      parent: self,
+//      child: child(),
+//      loadableReducer: .init(state: toLoadableState, action: \Action.loadable),
+//      toChildAction: AnyCasePath(toChildAction),
+//      file: file,
+//      fileID: fileID,
+//      line: line
+//    )
+//  }
 
   /// Enhances a reducer with the default ``LoadingAction`` implementations.
   ///
@@ -588,7 +491,7 @@ extension ReducerProtocol where Action: LoadableAction {
   ///
   /// **Example**
   /// ```swift
-  /// struct MyReducer: ReducerProtocol {
+  /// struct MyReducer: Reducer {
   ///   struct State: Equatable {
   ///     @LoadableState var int: Int?
   ///   }
@@ -597,7 +500,7 @@ extension ReducerProtocol where Action: LoadableAction {
   ///     case loadable(LoadingAction<Int>)
   ///   }
   ///
-  ///   var body: some ReducerProtocolOf<Self> {
+  ///   var body: some ReducerOf<Self> {
   ///     Reduce { state, action in
   ///       switch action {
   ///         case .loadable(.load):
@@ -614,22 +517,22 @@ extension ReducerProtocol where Action: LoadableAction {
   ///
   /// - Parameters:
   ///   - toLoadableState: The key path from the parent state to a ``LoadingState`` instance.
-  @inlinable
-  public func loadable<ChildState: Equatable>(
-    state toLoadableState: WritableKeyPath<State, LoadableState<ChildState>>
-  ) -> _LoadableReducer<Self, ChildState> where Action.State == ChildState {
-    .init(
-      parent: self,
-      loadableReducer: .init(state: toLoadableState, action: /Action.loadable)
-    )
-  }
+//  @inlinable
+//  public func loadable<ChildState: Equatable>(
+//    state toLoadableState: WritableKeyPath<State, LoadableState<ChildState>>
+//  ) -> _LoadableReducer<Self, ChildState> where Action.State == ChildState {
+//    .init(
+//      parent: self,
+//      loadableReducer: .init(state: toLoadableState, action: \Action.loadable)
+//    )
+//  }
 }
 
 /// A concrete reducer used for the default loading implementation.
 ///
-/// This should not be used directly, instead use the ``ReducerProtocol/loadable(state:action)``.
+/// This should not be used directly, instead use the ``Reducer/loadable(state:action)``.
 ///
-public struct _LoadableReducer<Parent: ReducerProtocol, Value: Equatable>: ReducerProtocol {
+public struct _LoadableReducer<Parent: Reducer, Value: Equatable>: Reducer {
 
   @usableFromInline
   let parent: Parent
@@ -650,105 +553,105 @@ public struct _LoadableReducer<Parent: ReducerProtocol, Value: Equatable>: Reduc
   public func reduce(
     into state: inout Parent.State,
     action: Parent.Action
-  ) -> EffectTask<Parent.Action> {
+  ) -> Effect<Parent.Action> {
     let parentEffects = parent.reduce(into: &state, action: action)
     let loadingEffects = loadableReducer.reduce(into: &state, action: action)
     return .merge(loadingEffects, parentEffects)
   }
 }
 
-public struct _LoadableChildReducer<
-  Parent: ReducerProtocol,
-  ChildState,
-  ChildAction,
-  Child: ReducerProtocol
->: ReducerProtocol where Child.State == ChildState, Child.Action == ChildAction {
-
-  @usableFromInline
-  let parent: Parent
-
-  @usableFromInline
-  let child: Child
-
-  @usableFromInline
-  let loadableReducer: LoadableReducer<Parent.State, Parent.Action, ChildState>
-
-  @usableFromInline
-  let toChildAction: CasePath<Parent.Action, ChildAction>
-
-  @usableFromInline
-  let file: StaticString
-
-  @usableFromInline
-  let fileID: StaticString
-
-  @usableFromInline
-  let line: UInt
-
-  @inlinable
-  init(
-    parent: Parent,
-    child: Child,
-    loadableReducer: LoadableReducer<Parent.State, Parent.Action, ChildState>,
-    toChildAction: CasePath<Parent.Action, ChildAction>,
-    file: StaticString = #file,
-    fileID: StaticString = #fileID,
-    line: UInt = #line
-  ) {
-    self.parent = parent
-    self.child = child
-    self.loadableReducer = loadableReducer
-    self.toChildAction = toChildAction
-    self.file = file
-    self.fileID = fileID
-    self.line = line
-  }
-
-  @inlinable
-  public func reduce(
-    into state: inout Parent.State,
-    action: Parent.Action
-  ) -> EffectTask<Parent.Action> {
-    let parentEffects = parent.reduce(into: &state, action: action)
-    let loadableEffects = loadableReducer.reduce(into: &state, action: action)
-    let childEffects: EffectTask<Parent.Action>
-
-    let toLoadableState = loadableReducer.toLoadableState
-
-    let childState = state[keyPath: toLoadableState].wrappedValue
-    let childAction = toChildAction.extract(from: action)
-
-    switch (childState, childAction) {
-    case (.some, .some(let action)):
-      childEffects = child.reduce(
-        into: &state[keyPath: toLoadableState].wrappedValue!,
-        action: action
-      )
-      .map { toChildAction.embed($0) }
-    case (.none, .some(let action)):
-      XCTFail(
-        """
-        A child action at \(self.fileID):\(self.line) was sent when the child value
-        has not yet been loaded or is nil.
-
-        Action: \(debugCaseOutput(action))
-
-
-        This is generally considered an application logic error.
-
-        """
-      )
-      childEffects = .none
-    case (.none, .none):
-      childEffects = .none
-    case (.some, .none):
-      childEffects = .none
-    }
-
-    return .merge(
-      loadableEffects,
-      childEffects,
-      parentEffects
-    )
-  }
-}
+//public struct _LoadableChildReducer<
+//  Parent: Reducer,
+//  ChildState,
+//  ChildAction,
+//  Child: Reducer
+//>: Reducer where Child.State == ChildState, Child.Action == ChildAction {
+//
+//  @usableFromInline
+//  let parent: Parent
+//
+//  @usableFromInline
+//  let child: Child
+//
+//  @usableFromInline
+//  let loadableReducer: LoadableReducer<Parent.State, Parent.Action, ChildState>
+//
+//  @usableFromInline
+//  let toChildAction: AnyCasePath<Parent.Action, ChildAction>
+//
+//  @usableFromInline
+//  let file: StaticString
+//
+//  @usableFromInline
+//  let fileID: StaticString
+//
+//  @usableFromInline
+//  let line: UInt
+//
+//  @inlinable
+//  init(
+//    parent: Parent,
+//    child: Child,
+//    loadableReducer: LoadableReducer<Parent.State, Parent.Action, ChildState>,
+//    toChildAction: CaseKeyPath<Parent.Action, ChildAction>,
+//    file: StaticString = #file,
+//    fileID: StaticString = #fileID,
+//    line: UInt = #line
+//  ) {
+//    self.parent = parent
+//    self.child = child
+//    self.loadableReducer = loadableReducer
+//    self.toChildAction = AnyCasePath(toChildAction)
+//    self.file = file
+//    self.fileID = fileID
+//    self.line = line
+//  }
+//
+//  @inlinable
+//  public func reduce(
+//    into state: inout Parent.State,
+//    action: Parent.Action
+//  ) -> Effect<Parent.Action> {
+//    let parentEffects = parent.reduce(into: &state, action: action)
+//    let loadableEffects = loadableReducer.reduce(into: &state, action: action)
+//    let childEffects: Effect<Parent.Action>
+//
+//    let toLoadableState = loadableReducer.toLoadableState
+//
+//    let childState = state[keyPath: toLoadableState]
+//    let childAction = toChildAction.extract(from: action)
+//
+//    switch childAction {
+//    case .some(let action):
+//      childEffects = child.reduce(
+//        into: &state[keyPath: toLoadableState],
+//        action: action
+//      )
+//      .map { toChildAction.embed($0) }
+////    case .some(let action):
+////      XCTFail(
+////        """
+////        A child action at \(self.fileID):\(self.line) was sent when the child value
+////        has not yet been loaded or is nil.
+////
+////        Action: \(debugCaseOutput(action))
+////
+////
+////        This is generally considered an application logic error.
+////
+////        """
+////      )
+////      childEffects = .none
+//    case .none:
+//      childEffects = .none
+////    case (.some, .none):
+////      childEffects = .none
+//    }
+//
+//    return .merge(
+//      loadableEffects,
+//      childEffects,
+//      parentEffects
+//    )
+//  }
+//}
