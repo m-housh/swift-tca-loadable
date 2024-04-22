@@ -4,18 +4,20 @@ import SwiftUI
 
 /// A view that can handle loadable items using the `ComposableArchitecture` pattern.
 ///
-/// Although this looks pretty gnarly, it is not that bad from the call-site and allows customization of the views for each state of a ``LoadingState``
+/// Although this looks pretty gnarly, it is not that bad from the call-site and allows customization of the views for each state of a ``LoadableState``
 /// item, and also includes default views (i.e. `ProgressView`'s) for when the item(s) are loading.
 ///
 /// **Example**:
 /// ``` swift
-///  struct App: Reducer {
+///  @Reducer
+///  struct App {
+///     @ObservableState
 ///     struct State: Equatable {
-///       @LoadableState var int: Int?
+///       var int: LoadableState<Int> = .notRequested
 ///     }
 ///
 ///     enum Action: Equatable {
-///       case int(LoadingAction<Int>)
+///       case int(LoadableAction<Int>)
 ///     }
 ///
 ///     @Dependency(\.continuousClock) var clock;
@@ -23,20 +25,20 @@ import SwiftUI
 ///       Reduce { state, action in
 ///         switch action {
 ///         case .int(.load):
-///           return .task {
-///             await .int(.receiveLoaded(
+///           return .run { send in
+///             await send(.int(.receiveLoaded(
 ///               TaskResult {
 ///                 /// sleep to act like data is loading from a remote.
 ///                 try await clock.sleep(for: .seconds(2))
 ///                 return 42
 ///               }
-///             ))
+///             )))
 ///           }
 ///         case .int:
 ///           return .none
 ///         }
 ///       }
-///       .loadable(state: \.$int, action: /Action.int)
+///       .loadable(state: \.int, action: \.int)
 ///     }
 ///  }
 ///
@@ -44,15 +46,12 @@ import SwiftUI
 ///    let store: StoreOf<App>
 ///    var body: some View {
 ///      VStack {
-///        WithViewStore(store, observe: { $0 }) { viewStore in
-///          LoadableView(store: store.scope(state: \.$int, action: App.Action.int)) {
-///            WithViewStore($0, observe: { $0 }) { viewStore in
-///              Text("Loaded: \(viewStore.state)")
-///            }
-///          } notRequested: {
+///        LoadableView(store: store.scope(state: \.int, action: \.int)) { int in
+///          Text("Loaded: \(int)")
+///        } notRequested: {
 ///            ProgressView()
-///          } isLoading: {
-///             IfLetStore($0) { intStore in
+///        } isLoading: { optionalInt in
+///         if let int = optionalInt {
 ///               // Show this view if we have loaded a value in the past.
 ///               VStack {
 ///                 ProgressView()
@@ -64,12 +63,11 @@ import SwiftUI
 ///               ProgressView()
 ///             }
 ///          }
-///          Button(action: { viewStore.send(.int(.load)) }) {
+///          Button(action: { store.send(.int(.load)) }) {
 ///            Text("Reload")
 ///          }
 ///          .padding(.top)
 ///        }
-///      }
 ///      .padding()
 ///    }
 ///  }
@@ -77,24 +75,21 @@ import SwiftUI
 ///
 ///
 public struct LoadableView<
-  Loadable: Reducer,
+  State: Equatable,
   NotRequested: View,
   Loaded: View,
   IsLoading: View
->: View where Loadable.State: Equatable, Loadable.Action: Equatable {
-
-  public typealias State = Loadable.State
-  public typealias Action = Loadable.Action
+>: View {
 
   private let autoload: Autoload
 
-  private let isLoading: (Store<Loadable.State?, LoadingAction<Loadable.State, Loadable.Action>>) -> IsLoading
+  private let isLoading: (State?) -> IsLoading
 
-  private let loaded: (Store<Loadable.State, LoadingAction<Loadable.State, Loadable.Action>>) -> Loaded
+  private let loaded: (State) -> Loaded
 
   private let notRequested: () -> NotRequested
 
-  private let store: Store<LoadingState<Loadable.State>, LoadingAction<Loadable.State, Loadable.Action>>
+  @Perception.Bindable private var store: Store<LoadableState<State>, LoadableAction<State>>
 
   /// Create a ``LoadableView`` without any default view implementations for the ``LoadingState``.
   ///
@@ -105,11 +100,11 @@ public struct LoadableView<
   ///   - notRequested: The view to show when the state is ``LoadingState/notRequested``
   ///   - isLoading: The view to show when the state is ``LoadingState/isLoading(previous:)``
   public init(
-    store: Store<LoadingState<Loadable.State>, LoadingAction<Loadable.State, Loadable.Action>>,
+    store: Store<LoadableState<State>, LoadableAction<State>>,
     autoload: Autoload = .whenNotRequested,
-    @ViewBuilder loaded: @escaping (Store<Loadable.State, LoadingAction<Loadable.State, Loadable.Action>>) -> Loaded,
+    @ViewBuilder loaded: @escaping (State) -> Loaded,
     @ViewBuilder notRequested: @escaping () -> NotRequested,
-    @ViewBuilder isLoading: @escaping (Store<Loadable.State?, LoadingAction<Loadable.State, Loadable.Action>>) -> IsLoading
+    @ViewBuilder isLoading: @escaping (State?) -> IsLoading
   ) {
     self.autoload = autoload
     self.store = store
@@ -119,50 +114,21 @@ public struct LoadableView<
   }
 
   public var body: some View {
-    #warning("Fix me.")
-    Text("Fix me.")
-//    WithViewStore(self.store, observe: { $0 }) { viewStore in
-//      SwitchStore(self.store) {
-//        CaseLet<
-//          LoadingState<State>,
-//          LoadingAction<State, Action>,
-//          Void,
-//          LoadingAction<Reducer.State, Reducer.Action>,
-//          NotRequested
-//        >(
-//          state: /LoadingState<State>.notRequested
-//        ) { _ in
-//          notRequested()
-//        }
-//        CaseLet<
-//          LoadingState<State>,
-//          LoadingAction<State, Action>,
-//          State?,
-//          LoadingAction<State, Action>,
-//          IsLoading
-//        >(
-//          state: /LoadingState<State>.isLoading(previous:)
-//        ) {
-//          isLoading($0)
-//        }
-//        CaseLet<
-//          LoadingState<State>,
-//          LoadingAction<State, Action>,
-//          State,
-//          LoadingAction<State, Action>,
-//          Loaded
-//        >(
-//          state: /LoadingState<State>.loaded
-//        ) {
-//          loaded($0)
-//        }
-//      }
-//      .onAppear {
-//        if self.autoload.shouldLoad(viewStore.state) {
-//          viewStore.send(.load)
-//        }
-//      }
-//    }
+    Group {
+      switch store.state {
+      case let .loaded(state):
+        self.loaded(state)
+      case let .isLoading(previous: previous):
+        self.isLoading(previous)
+      case .notRequested:
+        self.notRequested()
+      }
+    }
+    .onAppear {
+      if self.autoload.shouldLoad(store.state) {
+        store.send(.load)
+      }
+    }
   }
 }
 
@@ -179,7 +145,7 @@ public enum Autoload: Equatable {
   /// Only call load when the state is ``LoadingState/notRequested``.
   case whenNotRequested
 
-  func shouldLoad<V: Equatable>(_ state: LoadingState<V>) -> Bool {
+  func shouldLoad<V: Equatable>(_ state: LoadableState<V>) -> Bool {
     switch self {
     case .always:
       return true
@@ -198,10 +164,10 @@ extension LoadableView where NotRequested == ProgressView<EmptyView, EmptyView> 
   /// allowing customization of the other view's for ``LoadingState``.
   ///
   public init(
-    store: Store<LoadingState<State>, LoadingAction<State, Action>>,
+    store: Store<LoadableState<State>, LoadableAction<State>>,
     autoload: Autoload = .whenNotRequested,
-    @ViewBuilder isLoading: @escaping (Store<State?, LoadingAction<State, Action>>) -> IsLoading,
-    @ViewBuilder loaded: @escaping (Store<State, LoadingAction<State, Action>>) -> Loaded
+    @ViewBuilder isLoading: @escaping (State?) -> IsLoading,
+    @ViewBuilder loaded: @escaping (State) -> Loaded
   ) {
     self.autoload = autoload
     self.store = store
@@ -261,19 +227,19 @@ where
   ///   - loaded: The view to show when the state is ``LoadingState/loaded(_:)``
   ///   - notRequested: The view to show when the state is ``LoadingState/notRequested``
   public init(
-    store: Store<LoadingState<State>, LoadingAction<State, Action>>,
+    store: Store<LoadableState<State>, LoadableAction<State>>,
     autoload: Autoload = .whenNotRequested,
     orientation isLoadingOrientation: IsLoadingOrientation = .horizontal(),
-    @ViewBuilder loaded: @escaping (Store<State, LoadingAction<State, Action>>) -> Loaded,
+    @ViewBuilder loaded: @escaping (State) -> Loaded,
     @ViewBuilder notRequested: @escaping (Bool) -> NotRequested
   )
-  where IsLoading == IsLoadingView<State, LoadingAction<State, Action>, NotRequested, Loaded> {
+  where IsLoading == IsLoadingView<State, NotRequested, Loaded> {
     self.autoload = autoload
     self.store = store
     self.notRequested = { notRequested(false) }
     self.isLoading = {
       IsLoadingView(
-        store: $0,
+        state: $0,
         orientation: isLoadingOrientation,
         notRequested: notRequested,
         loaded: loaded
@@ -314,19 +280,19 @@ where
   ///   - loaded: The view to show when the state is ``LoadingState/loaded(_:)``
   ///
   public init(
-    store: Store<LoadingState<State>, LoadingAction<State, Action>>,
+    store: Store<LoadableState<State>, LoadableAction<State>>,
     autoload: Autoload = .whenNotRequested,
     orientation isLoadingOrientation: IsLoadingOrientation = .horizontal(),
-    @ViewBuilder loaded: @escaping (Store<State, LoadingAction<State, Action>>) -> Loaded
+    @ViewBuilder loaded: @escaping (State) -> Loaded
   )
-  where IsLoading == IsLoadingView<State, LoadingAction<State, Action>, NotRequested, Loaded> {
+  where IsLoading == IsLoadingView<State, NotRequested, Loaded> {
     let notRequested = { (_: Bool) in ProgressView() }
     self.autoload = autoload
     self.store = store
     self.notRequested =  { notRequested(false) }
     self.isLoading = {
       IsLoadingView(
-        store: $0,
+        state: $0,
         orientation: isLoadingOrientation,
         notRequested: notRequested,
         loaded: loaded
@@ -365,36 +331,36 @@ public enum IsLoadingOrientation: Equatable {
 ///
 /// This is generally not interacted with directly, but is used for the default for a ``LoadableView/init(store:autoload:isLoadingOrientation:loaded:)``
 ///
-public struct IsLoadingView<State, Action, NotRequested: View, Loaded: View>: View {
+public struct IsLoadingView<State, NotRequested: View, Loaded: View>: View {
 
   private let orientation: IsLoadingOrientation
-  private let store: Store<State?, Action>
+  private let state: State?
   private let notRequested: (Bool) -> NotRequested
-  private let loaded: (Store<State, Action>) -> Loaded
+  private let loaded: (State) -> Loaded
 
   public init(
-    store: Store<State?, Action>,
+    state: State?,
     orientation: IsLoadingOrientation,
     @ViewBuilder notRequested: @escaping (Bool) -> NotRequested,
-    @ViewBuilder loaded: @escaping (Store<State, Action>) -> Loaded
+    @ViewBuilder loaded: @escaping (State) -> Loaded
   ) {
-    self.store = store
+    self.state = state
     self.notRequested = notRequested
     self.loaded = loaded
     self.orientation = orientation
   }
 
   public var body: some View {
-    IfLetStore(self.store) { store in
-      self.buildView(store: store)
-    } else: {
-      notRequested(false)
+    if let state {
+      self.buildView(state)
+    } else {
+      self.notRequested(false)
     }
   }
   
   @ViewBuilder
   func buildView(
-    store: Store<State, Action>
+    _ state: State
   ) -> some View {
     switch self.orientation {
     case let .horizontal(orientation):
@@ -402,9 +368,9 @@ public struct IsLoadingView<State, Action, NotRequested: View, Loaded: View>: Vi
         switch orientation {
         case .leading:
           notRequested(true)
-          loaded(store)
+          loaded(state)
         case .trailing:
-          loaded(store)
+          loaded(state)
           notRequested(true)
         }
       }
@@ -413,9 +379,9 @@ public struct IsLoadingView<State, Action, NotRequested: View, Loaded: View>: Vi
         switch orientation {
         case .above:
           notRequested(true)
-          loaded(store)
+          loaded(state)
         case .below:
-          loaded(store)
+          loaded(state)
           notRequested(true)
         }
       }

@@ -15,19 +15,20 @@ struct User: Codable, Identifiable, Equatable {
   }
 }
 
-struct EnvisionedUsage: Reducer {
+@Reducer
+struct EnvisionedUsage {
   struct State: Codable, Equatable {
-    @LoadableState var user: User? = nil
+    var user: LoadableState<User> = .notRequested
   }
 
   enum Action: Equatable {
-    indirect case user(LoadingAction<User, Self>)
+    case user(LoadableAction<User>)
     case foo
   }
 
-  var body: some ReducerOf<Self> {
+  var body: some Reducer<State, Action> {
     EmptyReducer()
-      .loadable(state: \.$user, action: /Action.user)
+      .loadable(state: \.user, action: \.user)
   }
 }
 
@@ -39,7 +40,7 @@ final class TCA_LoadableTests: XCTestCase {
     
     let store = TestStore(
       initialState: EnvisionedUsage.State(),
-      reducer: EnvisionedUsage()
+      reducer: EnvisionedUsage.init
     )
     
     let mock = withDependencies {
@@ -49,10 +50,10 @@ final class TCA_LoadableTests: XCTestCase {
     }
     
     await store.send(.user(.receiveLoaded(.success(mock)))) {
-      $0.user = mock
+      $0.user = .loaded(mock)
     }
     await store.send(.user(.load)) {
-      $0.$user = .isLoading(previous: mock)
+      $0.user = .isLoading(previous: mock)
     }
   }
 
@@ -65,7 +66,8 @@ final class TCA_LoadableTests: XCTestCase {
       }
     }
     """
-    let decoded = try JSONDecoder().decode(EnvisionedUsage.State.self, from: Data(json.utf8))
+    let decoded = try JSONDecoder()
+      .decode(EnvisionedUsage.State.self, from: Data(json.utf8))
 
     let mock = withDependencies {
       $0.uuid = .incrementing
@@ -73,11 +75,11 @@ final class TCA_LoadableTests: XCTestCase {
       User.mock
     }
 
-    let state = EnvisionedUsage.State(user: mock)
+    let state = EnvisionedUsage.State(user: .loaded(mock))
     XCTAssertEqual(decoded, state)
 
     let encoder = JSONEncoder()
-    encoder.outputFormatting = [.prettyPrinted]
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
     let encoded = try encoder.encode(state)
 
     let string = String(data: encoded, encoding: .utf8)!

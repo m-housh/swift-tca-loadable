@@ -41,11 +41,11 @@ import SwiftUI
 
 struct App: Reducer {
   struct State: Equatable {
-    @LoadableState var int: Int?
+    var int: LoadableState<Int> = .notRequested
   }
 
   enum Action: Equatable {
-    case int(LoadingAction<Int>)
+    case int(LoadableAction<Int>)
   }
 
   @Dependency(\.continuousClock) var clock;
@@ -54,20 +54,20 @@ struct App: Reducer {
     Reduce { state, action in
       switch action {
       case .int(.load):
-        return .task {
-          await .int(.receiveLoaded(
+        return .run { send in
+          await send(.int(.receiveLoaded(
             TaskResult {
               /// sleep to act like data is loading from a remote.
               try await clock.sleep(for: .seconds(2))
               return 42
             }
-          ))
+          )))
         }
       case .int:
         return .none
       }
     }
-    .loadable(state: \.$int, action: /Action.int)
+    .loadable(state: \.int, action: \.int)
   }
 }
 
@@ -75,11 +75,8 @@ struct ContentView: View {
   let store: StoreOf<App>
   var body: some View {
     VStack {
-      WithViewStore(store, observe: { $0 }) { viewStore in
-        LoadableView(store: store.scope(state: \.$int, action: Preview.Action.int)) {
-          WithViewStore($0, observe: { $0 }) { viewStore in
-            Text("Loaded: \(viewStore.state)")
-          }
+        LoadableView(store: store.scope(state: \.int, action: \.int)) { loaded in
+          Text("Loaded: \(loaded)")
         }
         Button(action: { viewStore.send(.int(.load)) }) {
           Text("Reload")
@@ -103,15 +100,13 @@ struct ContentView: View {
   var body: some View {
     LoadableView(
       store: store.scope(state: \.$score, action: App.Action.int)
-    ) { scoreStore in
+    ) { loadedScore in
       // The view when we have loaded content.
-      WithViewStore(scoreStore) { viewStore in
-        Text("Your score is: \(viewStore.state)")
-      }
-    } isLoading: { (isLoadingStore: Store<Int?, App.Action>) in 
-      MyCustomIsLoadingView(store: isLoadingStore)
-    } notRequested: { (notRequestedStore: Store<Void, App.Action>) in 
-      MyCustomNotRequestedView(store: notRequestedStore)
+      Text("Your score is: \(loadedScore)")
+    } isLoading: { optionalLastLoadedValue in 
+      MyCustomIsLoadingView(optionalLastLoadedValue)
+    } notRequested: { 
+      MyCustomNotRequestedView()
     }
   }
 }
@@ -120,6 +115,5 @@ struct ContentView: View {
 ## Topics
 
 - ``LoadableState``
-- ``LoadingState``
-- ``LoadingAction``
+- ``LoadableAction``
 - ``LoadableView``
