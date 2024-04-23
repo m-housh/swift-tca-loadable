@@ -124,6 +124,9 @@ struct ContentView: View {
 - ``ComposableArchitecture/Reducer/loadable(state:action:operation:)``
 - ``ComposableArchitecture/Reducer/loadable(state:action:on:operation:)``
 
+### Effects
+- ``ComposableArchitecture/Effect/load(_:operation:)``
+
 ### Views
 - ``LoadableView``
 - ``Autoload``

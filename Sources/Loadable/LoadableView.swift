@@ -91,14 +91,14 @@ public struct LoadableView<
 
   @Perception.Bindable private var store: Store<LoadableState<State>, LoadableAction<State>>
 
-  /// Create a ``LoadableView`` without any default view implementations for the ``LoadingState``.
+  /// Create a ``LoadableView`` without any default view implementations for the ``LoadableState``.
   ///
   /// - Parameters:
-  ///   - store: The store of the ``LoadingState`` and ``LoadingAction``
-  ///   - autoload: A flag for if we should call ``LoadingAction/load`` when the view appears.
-  ///   - loaded: The view to show when the state is ``LoadingState/loaded(_:)``
-  ///   - notRequested: The view to show when the state is ``LoadingState/notRequested``
-  ///   - isLoading: The view to show when the state is ``LoadingState/isLoading(previous:)``
+  ///   - store: The store of the ``LoadableState`` and ``LoadableAction``
+  ///   - autoload: A flag for if we should call ``LoadableAction/load`` when the view appears.
+  ///   - loaded: The view to show when the state is ``LoadableState/loaded(_:)``
+  ///   - notRequested: The view to show when the state is ``LoadableState/notRequested``
+  ///   - isLoading: The view to show when the state is ``LoadableState/isLoading(previous:)``
   public init(
     store: Store<LoadableState<State>, LoadableAction<State>>,
     autoload: Autoload = .whenNotRequested,
@@ -132,7 +132,7 @@ public struct LoadableView<
   }
 }
 
-/// Represents when / if we should call the ``LoadingAction/load`` when a view appears.
+/// Represents when / if we should call the ``LoadableAction/load`` when a view appears.
 ///
 public enum Autoload: Equatable {
 
@@ -142,7 +142,7 @@ public enum Autoload: Equatable {
   /// Never call load when a view appears.
   case never
 
-  /// Only call load when the state is ``LoadingState/notRequested``.
+  /// Only call load when the state is ``LoadableState/notRequested``.
   case whenNotRequested
 
   func shouldLoad<V: Equatable>(_ state: LoadableState<V>) -> Bool {
@@ -160,8 +160,8 @@ public enum Autoload: Equatable {
 @available(iOS 14.0, macOS 11, tvOS 14, watchOS 7, *)
 extension LoadableView where NotRequested == ProgressView<EmptyView, EmptyView> {
 
-  /// Create a ``LoadableView`` that uses a `ProgressView` for the ``LoadingState/notRequested`` state,
-  /// allowing customization of the other view's for ``LoadingState``.
+  /// Create a ``LoadableView`` that uses a `ProgressView` for the ``LoadableState/notRequested`` state,
+  /// allowing customization of the other view's for ``LoadableState``.
   ///
   public init(
     store: Store<LoadableState<State>, LoadableAction<State>>,
@@ -183,13 +183,13 @@ where
   NotRequested == ProgressView<EmptyView, EmptyView>
 {
 
-  /// Create a ``LoadableView`` that uses the default `ProgressView` for when an item is ``LoadingState/notRequested``.
+  /// Create a ``LoadableView`` that uses the default `ProgressView` for when an item is ``LoadableState/notRequested``.
   /// And uses an `HStack` or a `VStack` with the `ProgressView` and the `LoadedView` for when an
-  /// item is in the ``LoadingState/isLoading(previous:)`` state.
+  /// item is in the ``LoadableState/isLoading(previous:)`` state.
   ///
   /// With this initializer overload, you can specify the `NotRequested` view by using a closure that get's passed a
-  /// boolean, which is `false`  when the loading state is ``LoadingState/notRequested`` or  `true` when
-  /// the loading state is ``LoadingState/isLoading(previous:)``.
+  /// boolean, which is `false`  when the loading state is ``LoadableState/notRequested`` or  `true` when
+  /// the loading state is ``LoadableState/isLoading(previous:)``.
   ///
   ///  **Example**
   /// ```swift
@@ -221,11 +221,11 @@ where
   /// ```
   ///
   /// - Parameters:
-  ///   - store: The store of the ``LoadingState`` and ``LoadingAction``
-  ///   - autoload: A flag for if we should call ``LoadingAction/load`` when the view appears.
+  ///   - store: The store of the ``LoadableState`` and ``LoadableAction``
+  ///   - autoload: A flag for if we should call ``LoadableAction/load`` when the view appears.
   ///   - isLoadingOrientation: A flag for whether to show the not requested view in an `HStack` or a `VStack`.
-  ///   - loaded: The view to show when the state is ``LoadingState/loaded(_:)``
-  ///   - notRequested: The view to show when the state is ``LoadingState/notRequested``
+  ///   - loaded: The view to show when the state is ``LoadableState/loaded(_:)``
+  ///   - notRequested: The view to show when the state is ``LoadableState/notRequested``
   public init(
     store: Store<LoadableState<State>, LoadableAction<State>>,
     autoload: Autoload = .whenNotRequested,
@@ -248,9 +248,9 @@ where
     self.loaded = loaded
   }
 
-  /// Create a ``LoadableView`` that uses the default `ProgressView` for when an item is ``LoadingState/notRequested``.
+  /// Create a ``LoadableView`` that uses the default `ProgressView` for when an item is ``LoadableState/notRequested``.
   /// And uses an `HStack` or a `VStack` with the `ProgressView` along with the `LoadedView` for when an
-  /// item is in the ``LoadingState/isLoading(previous:)`` state.
+  /// item is in the ``LoadableState/isLoading(previous:)`` state.
   ///
   /// ```swift
   ///  struct ContentView: View {
@@ -274,10 +274,10 @@ where
   ///  }
   /// ```
   /// - Parameters:
-  ///   - store: The store of the ``LoadingState`` and ``LoadingAction``
-  ///   - autoload: A flag for if we should call ``LoadingAction/load`` when the view appears.
+  ///   - store: The store of the ``LoadableState`` and ``LoadableAction``
+  ///   - autoload: A flag for if we should call ``LoadableAction/load`` when the view appears.
   ///   - isLoadingOrientation: A flag for whether to show the not requested view in an `HStack` or a `VStack`.
-  ///   - loaded: The view to show when the state is ``LoadingState/loaded(_:)``
+  ///   - loaded: The view to show when the state is ``LoadableState/loaded(_:)``
   ///
   public init(
     store: Store<LoadableState<State>, LoadableAction<State>>,
@@ -304,14 +304,14 @@ where
 
 /// Represents the orentation of an ``IsLoadingView``, and embeds a
 /// previously loaded value in either an `HStack` or a `VStack` when the loading state
-/// is ``LoadingState/isLoading(previous:)``.
+/// is ``LoadableState/isLoading(previous:)``.
 ///
 public enum IsLoadingOrientation: Equatable {
 
-  /// Embeds previously loaded values in an `HStack` when the state is ``LoadingState/isLoading(previous:)``
+  /// Embeds previously loaded values in an `HStack` when the state is ``LoadableState/isLoading(previous:)``
   case horizontal(Horizontal = .leading)
 
-  /// Embeds previously loaded values in a `VStack` when the state is ``LoadingState/isLoading(previous:)``
+  /// Embeds previously loaded values in a `VStack` when the state is ``LoadableState/isLoading(previous:)``
   case vertical(Vertical = .above)
 
   /// Represents the orientation of the not requested view in relation to the loaded view, when shown in an `HStack`.
@@ -327,7 +327,7 @@ public enum IsLoadingOrientation: Equatable {
 }
 
 /// A view that will show the `NotRequested` and `Loaded` views in an `HStack` or a `VStack` based on if a
-/// ``LoadingState`` when there has been a previous value loaded, otherwise it will show the `NotRequested` view.
+/// ``LoadableState`` when there has been a previous value loaded, otherwise it will show the `NotRequested` view.
 ///
 /// This is generally not interacted with directly, but is used for the default for a ``LoadableView/init(store:autoload:isLoadingOrientation:loaded:)``
 ///

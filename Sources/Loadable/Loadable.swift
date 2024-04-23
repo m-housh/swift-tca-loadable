@@ -163,6 +163,43 @@ extension Reducer {
 
 extension Effect {
 
+  /// A convenience extension to call a ``LoadableAction/receiveLoaded(_:)`` with the given
+  /// operation.
+  ///
+  /// This is useful if you are managing the ``LoadableAction`` in the parent reducer or using one of
+  /// the more basic ``ComposableArchitecture/Reducer/loadable(state:action:)`` modifiers.
+  ///
+  /// **Example**
+  /// ```swift
+  /// @Reducer
+  /// struct AppReducer {
+  ///   struct State {
+  ///     var int: LoadableState<Int> = .notRequested
+  ///   }
+  ///
+  ///   enum Action {
+  ///     case int(LoadableAction<Int>)
+  ///     case task
+  ///   }
+  ///
+  ///   var body: some ReducerOf<Self> {
+  ///     Reduce<State, Action> { state, action in
+  ///       switch action {
+  ///       case .int:
+  ///         return .none
+  ///       case .task:
+  ///        return .load(\.int) {
+  ///           try await myIntLoader()
+  ///         }
+  ///       }
+  ///     }
+  ///     .loadable(state: \.int, action: \.int)
+  ///   }
+  /// ```
+  ///
+  /// - Parameters:
+  ///   - toLoadableAction: The loadable action to call the `receiveLoaded` on.
+  ///   - operation: The operation used to load the value.
   @inlinable
   public static func load<Value>(
     _ toLoadableAction: CaseKeyPath<Action, LoadableAction<Value>>,

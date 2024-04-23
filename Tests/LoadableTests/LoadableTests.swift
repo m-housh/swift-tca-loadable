@@ -15,6 +15,7 @@ struct User: Codable, Identifiable, Equatable {
   }
 }
 
+@available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
 @Reducer
 struct EnvisionedUsage {
   struct State: Codable, Equatable {
@@ -46,6 +47,7 @@ struct EnvisionedUsage {
   }
 }
 
+@available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
 @Reducer
 struct LoadOnlyReducer {
   struct State: Codable, Equatable {
@@ -77,6 +79,7 @@ struct LoadOnlyReducer {
   }
 }
 
+@available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
 @Reducer
 struct ParentOnlyReducer {
   struct State: Codable, Equatable {
@@ -122,6 +125,7 @@ final class TCA_LoadableTests: XCTestCase {
   }
 
   @MainActor
+  @available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
   func test_loadable() async {
     
     let store = TestStore(
@@ -149,6 +153,7 @@ final class TCA_LoadableTests: XCTestCase {
   }
 
   @MainActor
+  @available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
   func test_load_only_handler() async {
 
     let store = TestStore(
@@ -176,6 +181,7 @@ final class TCA_LoadableTests: XCTestCase {
   }
 
   @MainActor
+  @available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
   func test_parent_only_handler() async {
 
     let store = TestStore(
