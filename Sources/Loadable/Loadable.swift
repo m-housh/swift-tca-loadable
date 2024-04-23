@@ -40,9 +40,12 @@ public enum LoadableState<Value> {
     }
   }
 
-  public subscript<T>(dynamicMember keyPath: WritableKeyPath<Value, T?>) -> T? {
+  public subscript<T>(dynamicMember keyPath: WritableKeyPath<Value, T>) -> T? {
     get { self.rawValue?[keyPath: keyPath] }
-    set { self.rawValue?[keyPath: keyPath] = newValue }
+    set {
+      guard let newValue else { return }
+      self.rawValue?[keyPath: keyPath] = newValue
+    }
   }
 }
 extension LoadableState: Equatable where Value: Equatable {}
