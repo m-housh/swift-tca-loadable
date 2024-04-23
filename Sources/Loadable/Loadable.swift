@@ -7,6 +7,7 @@ import Foundation
 ///
 @CasePathable
 @ObservableState
+@dynamicMemberLookup
 public enum LoadableState<Value> {
 
   /// Set when the value has not been requested / loaded yet.
@@ -37,6 +38,11 @@ public enum LoadableState<Value> {
       }
       self = .loaded(value)
     }
+  }
+
+  public subscript<T>(dynamicMember keyPath: WritableKeyPath<Value, T?>) -> T? {
+    get { self.rawValue?[keyPath: keyPath] }
+    set { self.rawValue?[keyPath: keyPath] = newValue }
   }
 }
 extension LoadableState: Equatable where Value: Equatable {}
