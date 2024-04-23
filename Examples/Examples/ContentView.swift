@@ -3,28 +3,54 @@ import Loadable
 import SwiftUI
 
 @available(iOS 16, *)
-struct App: ReducerProtocol {
+struct App: Reducer {
+  @ObservableState
   struct State: Equatable {
-    @LoadableState var int: Int?
+    var int: LoadableState<Int> = .notRequested
     var orientation: IsLoadingOrientation = .horizontal()
+
+    var currentOrientation: String {
+      switch orientation {
+      case let .horizontal(horizontal):
+        switch horizontal {
+        case .leading:
+          return "Horizontal Leading"
+        case .trailing:
+          return "Horizontal Trailing"
+        }
+      case let .vertical(vertical):
+        switch vertical {
+        case .above:
+          return "Vertical Above"
+        case .below:
+          return "Vertical Below"
+        }
+      }
+    }
   }
 
-  enum Action: Equatable, LoadableAction {
-    case loadable(LoadingAction<Int>)
+  @CasePathable
+  enum Action: Equatable {
+    case int(LoadableAction<Int>)
     case toggleHorizontalOrVertical
     case toggleSecondaryOrientation
   }
 
   @Dependency(\.continuousClock) var clock;
-  var body: some ReducerProtocolOf<Self> {
+  var body: some ReducerOf<Self> {
     Reduce { state, action in
       switch action {
-      case .loadable(.load):
-        return .load {
-          try await clock.sleep(for: .seconds(2))
-          return 42
+      case .int(.load):
+        return .run { send in
+          await send(.int(.receiveLoaded(
+            TaskResult {
+              /// sleep to act like data is loading from a remote.
+              try await clock.sleep(for: .seconds(2))
+              return 42
+            }
+          )))
         }
-      case .loadable:
+      case .int:
         return .none
       case .toggleHorizontalOrVertical:
         switch state.orientation {
@@ -34,6 +60,7 @@ struct App: ReducerProtocol {
           state.orientation = .horizontal()
         }
         return .none
+
       case .toggleSecondaryOrientation:
         switch state.orientation {
         case .horizontal(.leading):
@@ -48,7 +75,7 @@ struct App: ReducerProtocol {
         return .none
       }
     }
-    .loadable(state: \.$int)
+    .loadable(state: \.int, action: \.int)
   }
 }
 
@@ -57,65 +84,47 @@ struct ContentView: View {
 
   var body: some View {
     VStack {
-      WithViewStore(store, observe: { $0 }) { viewStore in
-        LoadableView(
-          self.store.scope(state: \.$int.loadingState),
-          orientation: viewStore.orientation
-        ) {
-          WithViewStore($0, observe: { $0 }) { viewStore in
-            Text("Loaded: \(viewStore.state)")
-          }
-        }
-        Button(action: { viewStore.send(.load) }) {
-          Text("Reload")
-        }
-        .padding(.top)
+      Text("Toggle orientation and press reload button.")
+        .padding(.bottom, 40)
+
+      LoadableView(
+        store: store.scope(state: \.int, action: \.int),
+        orientation: store.orientation
+      ) { state in
+        Text("Loaded: \(state)")
+      }
+      Button(action: { store.send(.int(.load)) }) {
+        Text("Reload")
+      }
+      .buttonStyle(.borderedProminent)
+      .padding()
+
+
+      Text("Current Progress View Orientation")
+        .font(.callout)
+
+      Text("\(store.currentOrientation)")
+        .font(.caption)
+        .foregroundStyle(Color.secondary)
+        .padding(.bottom)
+
+      Button(action: { store.send(.toggleHorizontalOrVertical) }) {
+        Text("Toggle primary orientation")
+      }
+      Button(action: { store.send(.toggleSecondaryOrientation) }) {
+        Text("Toggle secondary orientation")
       }
     }
     .padding()
   }
 }
 
-//struct ContentView: View {
-//  let store: StoreOf<App>
-//  var body: some View {
-//    VStack {
-//      WithViewStore(store, observe: { $0 }) { viewStore in
-//        LoadableView(store: store.scope(state: \.$int, action: App.Action.int)) {
-//          WithViewStore($0, observe: { $0 }) { viewStore in
-//            Text("Loaded: \(viewStore.state)")
-//          }
-//        } notRequested: {
-//          ProgressView()
-//        } isLoading: {
-//          IfLetStore($0) { intStore in
-//            // Show this view if we have loaded a value in the past.
-//            VStack {
-//              ProgressView()
-//                .padding()
-//              Text("Loading...")
-//            }
-//          } else: {
-//            // Show this view when we have not loaded a value in the past, but our state `.isLoading`
-//            ProgressView()
-//          }
-//        }
-//        Button(action: { viewStore.send(.int(.load)) }) {
-//          Text("Reload")
-//        }
-//        .padding(.top)
-//      }
-//    }
-//    .padding()
-//  }
-//}
-
 struct ContentView_Previews: PreviewProvider {
   static var previews: some View {
     ContentView(
       store: .init(
         initialState: App.State(),
-        reducer: App()
+        reducer: App.init
       )
     )
   }

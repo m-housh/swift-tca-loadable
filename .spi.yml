@@ -1,6 +1,6 @@
 version: 1
 builder:
-  confits:
+  configs:
   - platfrom: ios
     scheme: swift-tca-loadable-Package
   - platform: macos-xcodebuild

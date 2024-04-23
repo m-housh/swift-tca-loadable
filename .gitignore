@@ -5,3 +5,5 @@
 xcuserdata/
 Package.resolved
 Examples/.build/*
+.dependencies/*
+.derivedData/*

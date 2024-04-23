@@ -7,172 +7,234 @@ struct User: Codable, Identifiable, Equatable {
   let name: String
 
   static var mock: Self {
+    @Dependency(\.uuid) var uuid;
     return Self.init(
-      id: UUID(uuidString: "deadbeef-dead-beef-dead-beefdeadbeef")!,
+      id: uuid(),
       name: "Blob"
     )
   }
-  
-  static var mocks: [Self] {
-    return [
-      .mock,
-      .init(
-        id: UUID(uuidString: "00000000-0000-0000-0000-000000000000")!,
-        name: "Blob Jr."
-      ),
-      .init(
-        id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
-        name: "Blob Sr."
-      ),
-    ]
-  }
 }
 
-extension IdentifiedArray where ID == User.ID, Element == User {
-  
-  static var mocks: Self { .init(uniqueElements: User.mocks) }
-}
-
-struct EnvisionedUsage: ReducerProtocol {
+@available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
+@Reducer
+struct EnvisionedUsage {
   struct State: Codable, Equatable {
-    @LoadableState var user: User? = nil
+    var user: LoadableState<User> = .notRequested
   }
 
-  enum Action: Equatable, LoadableAction {
-    case loadable(LoadingAction<User>)
+  enum Action: Equatable {
+    case user(LoadableAction<User>)
+    case task
   }
 
-  var body: some ReducerProtocolOf<Self> {
+  @Dependency(\.continuousClock) var clock
 
-    Reduce { state, action in
+  var body: some Reducer<State, Action> {
+    Reduce<State, Action> { state, action in
       switch action {
-      case .loadable(.load):
-        return .load {
+      case .user:
+        return .none
+
+      case .task:
+        return .none
+      }
+
+    }
+    .loadable(state: \.user, action: \.user, on: \.task) {
+      try await clock.sleep(for: .seconds(1))
+      return User.mock
+    }
+  }
+}
+
+@available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
+@Reducer
+struct LoadOnlyReducer {
+  struct State: Codable, Equatable {
+    var user: LoadableState<User> = .notRequested
+  }
+
+  enum Action: Equatable {
+    case user(LoadableAction<User>)
+    case task
+  }
+
+  @Dependency(\.continuousClock) var clock
+
+  var body: some Reducer<State, Action> {
+    Reduce<State, Action> { state, action in
+      switch action {
+      case .user:
+        return .none
+
+      case .task:
+        return .send(.user(.load))
+      }
+
+    }
+    .loadable(state: \.user, action: \.user) {
+      try await clock.sleep(for: .seconds(1))
+      return User.mock
+    }
+  }
+}
+
+@available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
+@Reducer
+struct ParentOnlyReducer {
+  struct State: Codable, Equatable {
+    var user: LoadableState<User> = .notRequested
+  }
+
+  enum Action: Equatable {
+    case user(LoadableAction<User>)
+    case task
+  }
+
+  @Dependency(\.continuousClock) var clock
+
+  var body: some Reducer<State, Action> {
+    Reduce<State, Action> { state, action in
+      switch action {
+      case .user(.load):
+        return .load(\.user) {
+          try await clock.sleep(for: .seconds(1))
           return User.mock
         }
-      case .loadable:
+      case .user:
         return .none
+
+      case .task:
+        return .send(.user(.load))
       }
+
     }
-    .loadable(state: \.$user)
+    .loadable(state: \.user, action: \.user)
   }
 }
 
-struct UserPicker: ReducerProtocol {
-  
-  struct State: Equatable {
-    @BindingState var selected: User.ID?
-    var users: IdentifiedArrayOf<User>
-  }
-  
-  enum Action: Equatable, BindableAction {
-    case binding(BindingAction<State>)
-  }
-  
-  var body: some ReducerProtocolOf<Self> {
-    BindingReducer()
-  }
-}
-
-struct UserLoader: ReducerProtocol {
-  struct State: Equatable {
-    @LoadableState var userPicker: UserPicker.State?
-  }
-  
-  enum Action: Equatable, LoadableAction {
-    case loadable(LoadingAction<UserPicker.State>)
-    case picker(UserPicker.Action)
-  }
-  
-  var body: some ReducerProtocolOf<Self> {
-    
-    Reduce { state, action in
-      switch action {
-      case .loadable(.load):
-        return .load { .init(users: .mocks) }
-      case .loadable:
-        return .none
-      case .picker:
-        return .none
-      }
-    }
-    .loadable(state: \.$userPicker, action: /Action.loadable, then: /Action.picker) {
-      UserPicker()
-    }
-  }
-}
-
-@MainActor
 final class TCA_LoadableTests: XCTestCase {
-  
-  func test_loadable() async {
 
+  override func invokeTest() {
+    withDependencies {
+      $0.uuid = .incrementing
+      $0.continuousClock = ImmediateClock()
+    } operation: {
+      super.invokeTest()
+    }
+  }
+
+  @MainActor
+  @available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
+  func test_loadable() async {
+    
     let store = TestStore(
       initialState: EnvisionedUsage.State(),
-      reducer: EnvisionedUsage()
+      reducer: EnvisionedUsage.init
     )
 
-    await store.send(.loadable(.load)) {
-      $0.$user.loadingState = .isLoading(previous: nil)
+    let mock = User(id: UUID(0), name: "Blob")
+
+    await store.send(.task)
+    await store.receive(.user(.load)) {
+      $0.user = .isLoading(previous: nil)
     }
-    await store.receive(.loadable(.receiveLoaded(.success(.mock))), timeout: 1) {
-      $0.$user.loadingState = .loaded(.mock)
+    await store.receive(.user(.receiveLoaded(.success(mock)))) {
+      $0.user = .loaded(mock)
+    }
+    await store.send(.user(.load)) {
+      $0.user = .isLoading(previous: mock)
     }
 
-    await store.send(.load) {
-      $0.$user.loadingState = .isLoading(previous: .mock)
+    let mock2 = User(id: UUID(1), name: "Blob")
+    await store.receive(.user(.receiveLoaded(.success(mock2)))) {
+      $0.user = .loaded(mock2)
     }
-    
-    await store.receive(.receiveLoaded(.success(.mock)), timeout: 1) {
-      $0.$user.loadingState = .loaded(.mock)
-      $0.user = .mock
-    }
-
   }
 
+  @MainActor
+  @available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
+  func test_load_only_handler() async {
+
+    let store = TestStore(
+      initialState: LoadOnlyReducer.State(),
+      reducer: LoadOnlyReducer.init
+    )
+
+    let mock = User(id: UUID(0), name: "Blob")
+
+    await store.send(.task)
+    await store.receive(.user(.load)) {
+      $0.user = .isLoading(previous: nil)
+    }
+    await store.receive(.user(.receiveLoaded(.success(mock)))) {
+      $0.user = .loaded(mock)
+    }
+    await store.send(.user(.load)) {
+      $0.user = .isLoading(previous: mock)
+    }
+
+    let mock2 = User(id: UUID(1), name: "Blob")
+    await store.receive(.user(.receiveLoaded(.success(mock2)))) {
+      $0.user = .loaded(mock2)
+    }
+  }
+
+  @MainActor
+  @available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
+  func test_parent_only_handler() async {
+
+    let store = TestStore(
+      initialState: ParentOnlyReducer.State(),
+      reducer: ParentOnlyReducer.init
+    )
+
+    let mock = User(id: UUID(0), name: "Blob")
+
+    await store.send(.task)
+    await store.receive(.user(.load)) {
+      $0.user = .isLoading(previous: nil)
+    }
+    await store.receive(.user(.receiveLoaded(.success(mock)))) {
+      $0.user = .loaded(mock)
+    }
+    await store.send(.user(.load)) {
+      $0.user = .isLoading(previous: mock)
+    }
+
+    let mock2 = User(id: UUID(1), name: "Blob")
+    await store.receive(.user(.receiveLoaded(.success(mock2)))) {
+      $0.user = .loaded(mock2)
+    }
+  }
+
+  @MainActor
   func test_codable() throws {
     let json = """
     {
       "user" : {
-        "id" : "DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF",
+        "id" : "00000000-0000-0000-0000-000000000000",
         "name" : "Blob"
       }
     }
     """
-    let decoded = try JSONDecoder().decode(EnvisionedUsage.State.self, from: Data(json.utf8))
+    let decoded = try JSONDecoder()
+      .decode(EnvisionedUsage.State.self, from: Data(json.utf8))
 
-    let state = EnvisionedUsage.State(user: .mock)
+    let mock = withDependencies {
+      $0.uuid = .incrementing
+    } operation: {
+      User.mock
+    }
+
+    let state = EnvisionedUsage.State(user: .loaded(mock))
     XCTAssertEqual(decoded, state)
 
     let encoder = JSONEncoder()
-    encoder.outputFormatting = [.prettyPrinted]
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
     let encoded = try encoder.encode(state)
 
     let string = String(data: encoded, encoding: .utf8)!
     XCTAssertEqual(string, json)
-  }
-  
-  func test_userLoader() async {
-    let store = TestStore(
-      initialState: UserLoader.State(),
-      reducer: UserLoader()
-    )
-    
-    await store.send(.loadable(.load)) {
-      $0.$userPicker.loadingState = .isLoading(previous: nil)
-    }
-    await store.receive(.loadable(.receiveLoaded(.success(.init(users: .mocks)))), timeout: 1) {
-      $0.userPicker = .init(users: .mocks)
-    }
-    await store.send(.loadable(.load)) {
-      $0.$userPicker.loadingState = .isLoading(previous: .init(users: .mocks))
-    }
-    await store.receive(.loadable(.receiveLoaded(.success(.init(users: .mocks)))), timeout: 1) {
-      $0.$userPicker.loadingState = .loaded(.init(users: .mocks))
-    }
-    await store.send(.picker(.set(\.$selected, User.mocks[0].id))) {
-      $0.userPicker?.selected = User.mocks[0].id
-    }
-
   }
 }

@@ -8,10 +8,10 @@ on:
 jobs:
   build:
     name: MacOS
-    runs-on: macos-latest
+    runs-on: macos-14
     strategy:
       matrix:
-        xcode: ['14.2']
+        xcode: ['15.2']
         config: ['debug', 'release']
     steps:
       - uses: actions/checkout@v3

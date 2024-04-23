@@ -11,7 +11,7 @@ let package = Package(
   ...
   dependencies: [
     ...
-    .package(url: "https://github.com/m-housh/swift-tca-loadable.git", from: "0.3.0")
+    .package(url: "https://github.com/m-housh/swift-tca-loadable.git", from: "0.4.0")
   ]
   ...
 )
@@ -21,8 +21,8 @@ let package = Package(
 ## Notes
 ----------
 
-Version `0.3.*` brings breaking changes from the previous versions. Version `0.3.*` updates to using the
-`ReducerProtocol` from the composable architecture.
+Version `0.4.*` brings breaking changes from the previous versions. Version `0.4.*` updates to using the
+`Reducer` macro from the composable architecture.
 
 ## Basic Usage
 ----------------
@@ -39,13 +39,14 @@ import ComposableArchitecture
 import Loadable
 import SwiftUI
 
-struct App: Reducer {
+@Reducer
+struct App {
   struct State: Equatable {
-    @LoadableState var int: Int?
+    var int: LoadableState<Int> = .notRequested
   }
 
   enum Action: Equatable, LoadableAction {
-    case loadable(LoadingAction<Int>)
+    case int(LoadableAction<Int>)
   }
 
   @Dependency(\.continuousClock) var clock;
@@ -53,17 +54,16 @@ struct App: Reducer {
   var body: some ReducerOf<Self> {
     Reduce { state, action in
       switch action {
-      case .loadable(.load):
-        return .load {
-          /// sleep to act like data is loading from a remote.
-          try await clock.sleep(for: .seconds(2))
-          return 42
-        }
+
       case .loadable:
         return .none
       }
     }
-    .loadable(state: \.$int)
+    .loadable(state: \.int, action: \.int) {
+      /// sleep to act like data is loading from a remote.
+      try await clock.sleep(for: .seconds(2))
+      return 42
+    }
   }
 }
 
@@ -71,12 +71,10 @@ struct ContentView: View {
   let store: StoreOf<App>
   var body: some View {
     VStack {
-      LoadableView(store: store.scope(state: \.$int, action: Preview.Action.int)) {
-        WithViewStore($0, observe: { $0 }) { viewStore in
-          Text("Loaded: \(viewStore.state)")
-        }
+      LoadableView(store: store.scope(state: \.int, action: \.int)) { int in
+        Text("Loaded: \(int)")
       }
-      Button(action: { ViewStore(store).send(.load) }) {
+      Button(action: { store.send(.int(.load)) }) {
         Text("Reload")
       }
       .padding(.top)
@@ -96,16 +94,14 @@ struct ContentView: View {
 
   var body: some View {
     LoadableView(
-      store: store.scope(state: \.$score, action: App.Action.int)
-    ) { scoreStore in
+      store: store.scope(state: \.int, action: \.int)
+    ) { score in
       // The view when we have loaded content.
-      WithViewStore(scoreStore) { viewStore in
-        Text("Your score is: \(viewStore.state)")
-      }
-    } isLoading: { (isLoadingStore: Store<Int?, App.Action>) in 
-      MyCustomIsLoadingView(store: isLoadingStore)
-    } notRequested: { (notRequestedStore: Store<Void, App.Action>) in 
-      MyCustomNotRequestedView(store: notRequestedStore)
+      Text("Your score is: \(score)")
+    } isLoading: { optionalLastScore in 
+      MyCustomIsLoadingView(optionalLastScore)
+    } notRequested: { 
+      MyCustomNotRequestedView()
     }
   }
 }
@@ -113,21 +109,23 @@ struct ContentView: View {
 
 ## Articles
 - <doc:GeneralUsage>
-- <doc:AdvancedUsage>
 - <doc:ErrorHandling>
 
 ## Topics
 
 ### State
 - ``LoadableState``
-- ``LoadingState``
 
 ### Actions
-- ``LoadingAction``
 - ``LoadableAction``
 
 ### Reducers
-- ``LoadableReducer``
+- ``ComposableArchitecture/Reducer/loadable(state:action:)``
+- ``ComposableArchitecture/Reducer/loadable(state:action:operation:)``
+- ``ComposableArchitecture/Reducer/loadable(state:action:on:operation:)``
+
+### Effects
+- ``ComposableArchitecture/Effect/load(_:operation:)``
 
 ### Views
 - ``LoadableView``
