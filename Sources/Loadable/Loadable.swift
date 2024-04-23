@@ -20,13 +20,22 @@ public enum LoadableState<Value> {
 
   /// Access the loaded value if it's been set.
   public var rawValue: Value? {
-    switch self {
-    case .notRequested:
-      return nil
-    case .isLoading(previous: let last):
-      return last
-    case .loaded(let value):
-      return value
+    get {
+      switch self {
+      case .notRequested:
+        return nil
+      case .isLoading(previous: let last):
+        return last
+      case .loaded(let value):
+        return value
+      }
+    }
+    set {
+      guard let value = newValue else {
+        self = .notRequested
+        return
+      }
+      self = .loaded(value)
     }
   }
 }
