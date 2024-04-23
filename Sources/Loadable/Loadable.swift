@@ -215,9 +215,10 @@ extension Effect {
   ) -> Self {
     .run { send in
       await send(
-        toLoadableAction.embed(.receiveLoaded(
-          TaskResult { try await operation() }
-        ))
+        toLoadableAction.embed(
+          .receiveLoaded(
+            TaskResult { try await operation() }
+          ))
       )
     }
   }
@@ -254,7 +255,7 @@ public struct _LoadableReducer<Parent: Reducer, Value, TriggerAction>: Reducer {
 
     // Short circuit if we are handling the trigger action.
     if let triggerAction,
-       triggerAction.extract(from: action) != nil
+      triggerAction.extract(from: action) != nil
     {
       return .merge(
         .send(toLoadableAction.embed(.load)),
