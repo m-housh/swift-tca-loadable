@@ -1,3 +1,4 @@
+import CasePaths
 import ComposableArchitecture
 import CustomDump
 import Foundation
@@ -73,7 +74,71 @@ extension Reducer {
   /// Enhances a reducer with the default ``LoadableAction`` implementations.
   ///
   /// The default implementation will handle setting the ``LoadableState`` appropriately
-  /// when a value has been loaded from a remote.
+  /// when a value has been loaded from a remote and use the `loadOperation` passed in
+  /// to load the value when the `triggerAction` is received.
+  ///
+  /// > Note: The default implementation does not handle failures during loading, to handle errors
+  /// > your parent reducer should handle the `.receiveLoaded(.failure(let error))`.
+  ///
+  ///
+  /// - Parameters:
+  ///   - toLoadableState: The key path from the parent state to a ``LoadableState`` instance.
+  ///   - toLoadableAction: The case path from the parent action to a ``LoadableAction`` case.
+  ///   - triggerAction: The case path from the parent action that triggers loading the value.
+  ///   - loadOperation: The operation used to load the value when the `.load` action is received.
+  public func loadable<Value: Equatable, TriggerAction>(
+    state toLoadableState: WritableKeyPath<State, LoadableState<Value>>,
+    action toLoadableAction: CaseKeyPath<Action, LoadableAction<Value>>,
+    on triggerAction: CaseKeyPath<Action, TriggerAction>,
+    operation loadOperation: @Sendable @escaping () async throws -> Value
+  ) -> _LoadableReducer<Self, Value, TriggerAction> {
+    .init(
+      parent: self,
+      toLoadableState: toLoadableState,
+      toLoadableAction: AnyCasePath(toLoadableAction),
+      loadOperation: loadOperation,
+      triggerAction: AnyCasePath(triggerAction)
+    )
+  }
+
+  /// Enhances a reducer with the default ``LoadableAction`` implementations. Requires
+  /// manually handling the loadable actions in the parent reducer.
+  ///
+  ///
+  /// The default implementation will handle setting the ``LoadableState`` appropriately
+  /// when a value has been loaded from a remote. This overload requires you to manage calling
+  /// the `.load` action from the parent reducer
+  ///
+  /// > Note: The default implementation does not handle failures during loading, to handle errors
+  /// > your parent reducer should handle the `.receiveLoaded(.failure(let error))`.
+  ///
+  ///
+  /// - Parameters:
+  ///   - toLoadableState: The key path from the parent state to a ``LoadableState`` instance.
+  ///   - toLoadableAction: The case path from the parent action to a ``LoadableAction`` case.
+  ///   - loadOperation: The operation used to load the value when the `.load` action is received.
+  public func loadable<Value: Equatable>(
+    state toLoadableState: WritableKeyPath<State, LoadableState<Value>>,
+    action toLoadableAction: CaseKeyPath<Action, LoadableAction<Value>>,
+    operation loadOperation: @Sendable @escaping () async throws -> Value
+  ) -> _LoadableReducer<Self, Value, LoadableAction<Value>> {
+    .init(
+      parent: self,
+      toLoadableState: toLoadableState,
+      toLoadableAction: AnyCasePath(toLoadableAction),
+      loadOperation: loadOperation,
+      triggerAction: nil
+    )
+  }
+
+  /// Enhances a reducer with the default ``LoadableAction`` implementations. Requires
+  /// manually handling the loadable actions in the parent reducer.
+  ///
+  ///
+  /// The default implementation will handle setting the ``LoadableState`` appropriately
+  /// when a value has been loaded from a remote. This overload requires you to manage calling
+  /// the `.load` action from the parent reducer as well as supplying the operation to load the
+  /// value when the `.load` action is called.
   ///
   /// > Note: The default implementation does not handle failures during loading, to handle errors
   /// > your parent reducer should handle the `.receiveLoaded(.failure(let error))`.
@@ -85,12 +150,39 @@ extension Reducer {
   public func loadable<Value: Equatable>(
     state toLoadableState: WritableKeyPath<State, LoadableState<Value>>,
     action toLoadableAction: CaseKeyPath<Action, LoadableAction<Value>>
-  ) -> _LoadableReducer<Self, Value> {
+  ) -> _LoadableReducer<Self, Value, LoadableAction<Value>> {
     .init(
       parent: self,
       toLoadableState: toLoadableState,
-      toLoadableAction: AnyCasePath(toLoadableAction)
+      toLoadableAction: AnyCasePath(toLoadableAction),
+      loadOperation: nil,
+      triggerAction: nil
     )
+  }
+}
+
+extension Effect {
+
+  @inlinable
+  public static func load<Value>(
+    _ toLoadableAction: CaseKeyPath<Action, LoadableAction<Value>>,
+    operation: @Sendable @escaping () async throws -> Value
+  ) -> Self {
+    .load(AnyCasePath(toLoadableAction), operation)
+  }
+
+  @usableFromInline
+  static func load<Value>(
+    _ toLoadableAction: AnyCasePath<Action, LoadableAction<Value>>,
+    _ operation: @Sendable @escaping () async throws -> Value
+  ) -> Self {
+    .run { send in
+      await send(
+        toLoadableAction.embed(.receiveLoaded(
+          TaskResult { try await operation() }
+        ))
+      )
+    }
   }
 }
 
@@ -98,7 +190,7 @@ extension Reducer {
 ///
 /// This should not be used directly, instead use the ``Reducer/loadable``.
 ///
-public struct _LoadableReducer<Parent: Reducer, Value>: Reducer {
+public struct _LoadableReducer<Parent: Reducer, Value, TriggerAction>: Reducer {
 
   @usableFromInline
   let parent: Parent
@@ -109,27 +201,49 @@ public struct _LoadableReducer<Parent: Reducer, Value>: Reducer {
   @usableFromInline
   let toLoadableAction: AnyCasePath<Parent.Action, LoadableAction<Value>>
 
+  @usableFromInline
+  let loadOperation: (@Sendable () async throws -> Value)?
+
+  @usableFromInline
+  let triggerAction: AnyCasePath<Parent.Action, TriggerAction>?
+
   @inlinable
   public func reduce(
     into state: inout Parent.State,
     action: Parent.Action
   ) -> Effect<Parent.Action> {
-    let currentState = state[keyPath: toLoadableState]
 
     let parentEffects: Effect<Parent.Action> = self.parent.reduce(into: &state, action: action)
+
+    // Short circuit if we are handling the trigger action.
+    if let triggerAction,
+       triggerAction.extract(from: action) != nil
+    {
+      return .merge(
+        .send(toLoadableAction.embed(.load)),
+        parentEffects
+      )
+    }
+
+    // Handle default loadable actions, setting the loadable state
+    // appropriately for the different actions.
+    let currentState = state[keyPath: toLoadableState]
+    var childEffects: Effect<Action> = .none
 
     if let loadableAction = toLoadableAction.extract(from: action) {
       switch (currentState.rawValue, loadableAction) {
       case let (childState, .load):
         state[keyPath: toLoadableState] = .isLoading(previous: childState)
+        if let loadOperation {
+          childEffects = .load(toLoadableAction, loadOperation)
+        }
       case let (_, .receiveLoaded(.success(childState))):
         state[keyPath: toLoadableState] = .loaded(childState)
       case (_, .receiveLoaded):
         break
-
       }
     }
 
-    return parentEffects
+    return .merge(childEffects, parentEffects)
   }
 }
