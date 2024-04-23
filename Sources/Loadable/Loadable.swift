@@ -101,6 +101,34 @@ extension Reducer {
     )
   }
 
+  /// Enhances a reducer with the default ``LoadableAction`` implementations.
+  ///
+  /// The default implementation will handle setting the ``LoadableState`` appropriately
+  /// when a value has been loaded from a remote and calls the ``LoadableAction/load`` action
+  /// to load the value when the `triggerAction` is received.
+  ///
+  /// > Note: The default implementation does not handle failures during loading, to handle errors
+  /// > your parent reducer should handle the `.receiveLoaded(.failure(let error))`.
+  ///
+  ///
+  /// - Parameters:
+  ///   - toLoadableState: The key path from the parent state to a ``LoadableState`` instance.
+  ///   - toLoadableAction: The case path from the parent action to a ``LoadableAction`` case.
+  ///   - triggerAction: The case path from the parent action that triggers loading the value.
+  public func loadable<Value: Equatable, TriggerAction>(
+    state toLoadableState: WritableKeyPath<State, LoadableState<Value>>,
+    action toLoadableAction: CaseKeyPath<Action, LoadableAction<Value>>,
+    on triggerAction: CaseKeyPath<Action, TriggerAction>
+  ) -> _LoadableReducer<Self, Value, TriggerAction> {
+    .init(
+      parent: self,
+      toLoadableState: toLoadableState,
+      toLoadableAction: AnyCasePath(toLoadableAction),
+      loadOperation: nil,
+      triggerAction: AnyCasePath(triggerAction)
+    )
+  }
+
   /// Enhances a reducer with the default ``LoadableAction`` implementations. Requires
   /// manually handling the loadable actions in the parent reducer.
   ///

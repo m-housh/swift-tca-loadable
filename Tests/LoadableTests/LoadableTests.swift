@@ -49,6 +49,40 @@ struct EnvisionedUsage {
 
 @available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
 @Reducer
+struct TriggerActionReducer {
+  struct State: Codable, Equatable {
+    var user: LoadableState<User> = .notRequested
+  }
+
+  enum Action: Equatable {
+    case user(LoadableAction<User>)
+    case task
+  }
+
+  @Dependency(\.continuousClock) var clock
+
+  var body: some Reducer<State, Action> {
+    Reduce<State, Action> { state, action in
+      switch action {
+      case .user(.load):
+        return .load(\.user) {
+          try await clock.sleep(for: .seconds(1))
+          return User.mock
+        }
+      case .user:
+        return .none
+
+      case .task:
+        return .none
+      }
+
+    }
+    .loadable(state: \.user, action: \.user, on: \.task)
+  }
+}
+
+@available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
+@Reducer
 struct LoadOnlyReducer {
   struct State: Codable, Equatable {
     var user: LoadableState<User> = .notRequested
@@ -152,6 +186,33 @@ final class TCA_LoadableTests: XCTestCase {
     }
   }
 
+  @MainActor
+  @available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
+  func test_loadable_trigger() async {
+
+    let store = TestStore(
+      initialState: TriggerActionReducer.State(),
+      reducer: TriggerActionReducer.init
+    )
+
+    let mock = User(id: UUID(0), name: "Blob")
+
+    await store.send(.task)
+    await store.receive(.user(.load)) {
+      $0.user = .isLoading(previous: nil)
+    }
+    await store.receive(.user(.receiveLoaded(.success(mock)))) {
+      $0.user = .loaded(mock)
+    }
+    await store.send(.user(.load)) {
+      $0.user = .isLoading(previous: mock)
+    }
+
+    let mock2 = User(id: UUID(1), name: "Blob")
+    await store.receive(.user(.receiveLoaded(.success(mock2)))) {
+      $0.user = .loaded(mock2)
+    }
+  }
   @MainActor
   @available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
   func test_load_only_handler() async {
